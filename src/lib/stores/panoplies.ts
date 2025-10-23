@@ -1,6 +1,7 @@
 import { browser } from '$app/environment';
 import { writable } from 'svelte/store';
-import type { PanopliePersonnalisee } from '$lib/types';
+import type { EmplacementId, PanopliePersonnalisee } from '$lib/types';
+import { emplacementsVides } from '$lib/types';
 
 const STORAGE_KEY = 'dofus-panoplies-utilisateur';
 
@@ -16,6 +17,52 @@ function genererId(): string {
         return `panoplie-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function normaliserPanoplie(entree: unknown): PanopliePersonnalisee | null {
+        if (!entree || typeof entree !== 'object') {
+                return null;
+        }
+        const base = emplacementsVides();
+        const emplacements: typeof base = { ...base };
+
+        const source = entree as Record<string, unknown>;
+
+        if (source.emplacements && typeof source.emplacements === 'object') {
+                for (const cle of Object.keys(base) as EmplacementId[]) {
+                        const valeur = (source.emplacements as Record<string, unknown>)[cle];
+                        if (typeof valeur === 'string' && valeur.trim().length > 0) {
+                                emplacements[cle] = valeur;
+                        }
+                }
+        } else if (Array.isArray(source.equipements)) {
+                const ids = Object.keys(base) as EmplacementId[];
+                source.equipements
+                        .filter((nom): nom is string => typeof nom === 'string' && nom.trim().length > 0)
+                        .forEach((nom, index) => {
+                                const slot = ids[index];
+                                if (slot) {
+                                        emplacements[slot] = nom;
+                                }
+                        });
+        }
+
+        const nom = typeof source.nom === 'string' && source.nom.trim().length > 0
+                ? source.nom.trim()
+                : 'Panoplie sans nom';
+
+        const description = typeof source.description === 'string' ? source.description : undefined;
+        const creeLe = typeof source.creeLe === 'string' ? source.creeLe : new Date().toISOString();
+        const modifieLe = typeof source.modifieLe === 'string' ? source.modifieLe : creeLe;
+
+        return {
+                id: typeof source.id === 'string' ? source.id : genererId(),
+                nom,
+                description,
+                emplacements,
+                creeLe,
+                modifieLe
+        };
+}
+
 function chargerPanoplies(): PanopliesState {
         if (!browser) {
                 return [];
@@ -27,7 +74,9 @@ function chargerPanoplies(): PanopliesState {
                 }
                 const donnees = JSON.parse(texte);
                 if (Array.isArray(donnees)) {
-                        return donnees as PanopliesState;
+                        return donnees
+                                .map((item) => normaliserPanoplie(item))
+                                .filter((item): item is PanopliePersonnalisee => item !== null);
                 }
         } catch (erreur) {
                 console.warn('Impossible de lire les panoplies sauvegardées :', erreur);
@@ -52,7 +101,7 @@ function creerPanoplie(nom: string): PanopliePersonnalisee {
                 id: genererId(),
                 nom,
                 description: '',
-                equipements: [],
+                emplacements: emplacementsVides(),
                 creeLe: maintenant,
                 modifieLe: maintenant
         };
@@ -106,30 +155,45 @@ function creerStorePanoplies() {
                                 )
                         );
                 },
-                ajouterEquipement(id: string, equipementNom: string) {
-                        update((liste) =>
-                                liste.map((p) => {
-                                        if (p.id !== id) {
-                                                return p;
-                                        }
-                                        if (p.equipements.includes(equipementNom)) {
-                                                return p;
-                                        }
-                                        return {
-                                                ...p,
-                                                equipements: [...p.equipements, equipementNom],
-                                                modifieLe: new Date().toISOString()
-                                        };
-                                })
-                        );
-                },
-                retirerEquipement(id: string, equipementNom: string) {
+                definirEquipement(id: string, emplacement: EmplacementId, equipementNom: string | null) {
                         update((liste) =>
                                 liste.map((p) =>
                                         p.id === id
                                                 ? {
                                                           ...p,
-                                                          equipements: p.equipements.filter((nom) => nom !== equipementNom),
+                                                          emplacements: {
+                                                                  ...p.emplacements,
+                                                                  [emplacement]: equipementNom
+                                                          },
+                                                          modifieLe: new Date().toISOString()
+                                                  }
+                                                : p
+                                )
+                        );
+                },
+                retirerEquipement(id: string, emplacement: EmplacementId) {
+                        update((liste) =>
+                                liste.map((p) =>
+                                        p.id === id
+                                                ? {
+                                                          ...p,
+                                                          emplacements: {
+                                                                  ...p.emplacements,
+                                                                  [emplacement]: null
+                                                          },
+                                                          modifieLe: new Date().toISOString()
+                                                  }
+                                                : p
+                                )
+                        );
+                },
+                reinitialiserEmplacements(id: string) {
+                        update((liste) =>
+                                liste.map((p) =>
+                                        p.id === id
+                                                ? {
+                                                          ...p,
+                                                          emplacements: emplacementsVides(),
                                                           modifieLe: new Date().toISOString()
                                                   }
                                                 : p
@@ -147,6 +211,7 @@ function creerStorePanoplies() {
                                         ...panoplieOriginale,
                                         id: genererId(),
                                         nom: `${panoplieOriginale.nom} (copie)`,
+                                        emplacements: { ...panoplieOriginale.emplacements },
                                         creeLe: new Date().toISOString(),
                                         modifieLe: new Date().toISOString()
                                 };

@@ -8,15 +8,26 @@
         } from '$lib/services/base-de-donnees';
         import { prixEquipements } from '$lib/stores/prix';
 import { panopliesUtilisateur } from '$lib/stores/panoplies';
-import type { Equipement, PanoplieOfficielle, PanopliePersonnalisee } from '$lib/types';
+import {
+        EMPLACEMENTS_PANOPLIE,
+        type EmplacementId,
+        type Equipement,
+        type PanoplieOfficielle,
+        type PanopliePersonnalisee
+} from '$lib/types';
+import { effetToImageUrl } from '$lib/utils/effets';
 
         let equipement: Equipement | null = null;
         let panoplie: PanoplieOfficielle | null = null;
         let messageConfirmation = '';
 let panoplieSelectionnee = '';
+let emplacementChoisi: EmplacementId | '' = '';
 let panopliesDisponibles: PanopliePersonnalisee[] = [];
 
 $: panopliesDisponibles = $panopliesUtilisateur as PanopliePersonnalisee[];
+$: if (!emplacementChoisi && EMPLACEMENTS_PANOPLIE.length > 0) {
+        emplacementChoisi = EMPLACEMENTS_PANOPLIE[0].id;
+}
 
         function chargerEquipement() {
                 const equipementNom = decodeURIComponent($page.params.nom ?? '');
@@ -35,43 +46,6 @@ $: panopliesDisponibles = $panopliesUtilisateur as PanopliePersonnalisee[];
                 chargerEquipement();
         });
 
-        function effetToImageUrl(effet: string): string {
-                const mapping: Record<string, string> = {
-                        Vitalité: 'pv',
-                        Force: 'terre',
-                        Intelligence: 'feu',
-                        Chance: 'eau',
-                        Agilité: 'air',
-                        Sagesse: 'sagesse',
-                        Tacle: 'tacle',
-                        Fuite: 'fuite',
-                        Portée: 'po',
-                        PA: 'pa',
-                        PM: 'pm',
-                        Prospection: 'pp',
-                        Puissance: 'puissance',
-                        'Retrait PA': 'retraitPA',
-                        'Retrait PM': 'retraitPM',
-                        'Esquive PA': 'esquivePA',
-                        'Esquive PM': 'esquivePM',
-                        '% Critique': 'critique',
-                        'Dommage(s)': 'dommages',
-                        'Dommage(s) Critiques': 'dommagesCrit',
-                        Initiative: 'initiative',
-                        '% Résistance Neutre': 'resNeutre',
-                        '% Résistance Terre': 'resTerre',
-                        '% Résistance Feu': 'resFeu',
-                        '% Résistance Eau': 'resEau',
-                        '% Résistance Air': 'resAir',
-                        'Résistance(s) Critiques': 'resCrit',
-                        'Invocation(s)': 'invocation',
-                        'Résistance(s) Poussée': 'resPoussee'
-                };
-
-                const filename = mapping[effet] || effet.toLowerCase().replace(/\s|\(|\)|%|'|\/|-/g, '');
-                return `https://dofusdb.fr/icons/effects/${filename}.png`;
-        }
-
         function formaterEffet(valeur: number | [number, number]) {
                 if (Array.isArray(valeur)) {
                         return `${valeur[0]} à ${valeur[1]}`;
@@ -86,16 +60,22 @@ $: panopliesDisponibles = $panopliesUtilisateur as PanopliePersonnalisee[];
         }
 
         function ajouterALaPanoplie() {
-        if (!equipement || !panoplieSelectionnee) {
-                return;
+                if (!equipement || !panoplieSelectionnee || !emplacementChoisi) {
+                        alert('Veuillez choisir une panoplie et un emplacement.');
+                        return;
+                }
+                panopliesUtilisateur.definirEquipement(
+                        panoplieSelectionnee,
+                        emplacementChoisi,
+                        equipement.nom
+                );
+                const selection = panopliesDisponibles.find((p) => p.id === panoplieSelectionnee);
+                const emplacement = EMPLACEMENTS_PANOPLIE.find((e) => e.id === emplacementChoisi);
+                messageConfirmation = selection
+                        ? `${equipement.nom} a été placé dans « ${selection.nom} » (${emplacement?.nom ?? 'Emplacement'})`
+                        : `${equipement.nom} a été ajouté.`;
+                setTimeout(() => (messageConfirmation = ''), 3000);
         }
-        panopliesUtilisateur.ajouterEquipement(panoplieSelectionnee, equipement.nom);
-        const selection = panopliesDisponibles.find((p) => p.id === panoplieSelectionnee);
-        messageConfirmation = selection
-                ? `${equipement.nom} a été ajouté à « ${selection.nom} »`
-                : `${equipement.nom} a été ajouté.`;
-        setTimeout(() => (messageConfirmation = ''), 3000);
-}
 </script>
 
 {#if equipement}
@@ -106,11 +86,6 @@ $: panopliesDisponibles = $panopliesUtilisateur as PanopliePersonnalisee[];
                                 <p>
                                         <strong>Niveau :</strong> {equipement.niveau} · <strong>Type :</strong> {equipement.Type}
                                 </p>
-                                {#if equipement.url}
-                                        <p>
-                                                <a href={equipement.url} target="_blank" rel="noreferrer">Consulter sur l'encyclopédie</a>
-                                        </p>
-                                {/if}
                         </div>
                         {#if equipement.illustration_url}
                                 <img src={equipement.illustration_url} alt={`Image de ${equipement.nom}`} />
@@ -188,9 +163,18 @@ $: panopliesDisponibles = $panopliesUtilisateur as PanopliePersonnalisee[];
                                                 <option value={panopliePerso.id}>{panopliePerso.nom}</option>
                                         {/each}
                                 </select>
-                                <button type="button" on:click={ajouterALaPanoplie} disabled={!panoplieSelectionnee}>
-                                                Ajouter à la panoplie
-                                        </button>
+                                <select bind:value={emplacementChoisi}>
+                                        {#each EMPLACEMENTS_PANOPLIE as emplacement}
+                                                <option value={emplacement.id}>{emplacement.nom}</option>
+                                        {/each}
+                                </select>
+                                <button
+                                        type="button"
+                                        on:click={ajouterALaPanoplie}
+                                        disabled={!panoplieSelectionnee || !emplacementChoisi}
+                                >
+                                        Ajouter à la panoplie
+                                </button>
                                 </div>
                                 {#if messageConfirmation}
                                         <p class="confirmation">{messageConfirmation}</p>

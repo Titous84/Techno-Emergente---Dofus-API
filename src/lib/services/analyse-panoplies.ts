@@ -37,7 +37,11 @@ export function calculerResumePanoplie(
         let coutTotal = 0;
         let niveauMinimum = 0;
 
-        for (const nomEquipement of panoplie.equipements) {
+        const equipementsActifs = Object.values(panoplie.emplacements).filter(
+                (nom): nom is string => typeof nom === 'string' && nom.length > 0
+        );
+
+        for (const nomEquipement of equipementsActifs) {
                 const equipement = trouverEquipement(nomEquipement);
                 if (!equipement) {
                         continue;
@@ -55,7 +59,7 @@ export function calculerResumePanoplie(
         }
 
         return {
-                nombreEquipements: panoplie.equipements.length,
+                nombreEquipements: equipementsActifs.length,
                 coutTotal,
                 niveauMinimum,
                 effets: Object.fromEntries(

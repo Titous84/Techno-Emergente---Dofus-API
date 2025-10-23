@@ -3,12 +3,19 @@
         import { prixEquipements } from '$lib/stores/prix';
         import { panopliesUtilisateur } from '$lib/stores/panoplies';
         import { calculerResumePanoplie, trouverEquipement } from '$lib/services/analyse-panoplies';
-        import type { Equipement, PanopliePersonnalisee, ResumePanoplie } from '$lib/types';
+        import {
+                EMPLACEMENTS_PANOPLIE,
+                type EmplacementId,
+                type Equipement,
+                type PanopliePersonnalisee,
+                type ResumePanoplie
+        } from '$lib/types';
 
         // Champs contrôlés par les formulaires de la page.
         let nomNouvellePanoplie = '';
         let rechercheEquipement = '';
         let panoplieSelectionneeId = '';
+        let emplacementSelectionne: EmplacementId | '' = '';
         let equipementSelectionne = '';
         let panoplies: PanopliePersonnalisee[] = [];
         let registrePrix = {} as Record<string, number>;
@@ -29,6 +36,9 @@
         $: panoplies = $panopliesUtilisateur as PanopliePersonnalisee[];
         $: registrePrix = $prixEquipements;
         $: panoplieSelectionnee = panoplies.find((p) => p.id === panoplieSelectionneeId) ?? null;
+        $: if (!emplacementSelectionne && EMPLACEMENTS_PANOPLIE.length > 0) {
+                emplacementSelectionne = EMPLACEMENTS_PANOPLIE[0].id;
+        }
         $: resumePanoplie = panoplieSelectionnee
                 ? calculerResumePanoplie(panoplieSelectionnee, registrePrix)
                 : null;
@@ -69,19 +79,26 @@
         }
 
         // Ajoute un équipement choisi dans la liste déroulante.
-        function ajouterEquipement(nom: string) {
+        function assignerEquipement(emplacement: EmplacementId, nom: string) {
                 if (!panoplieSelectionneeId) {
                         alert('Veuillez sélectionner une panoplie dans la liste.');
                         return;
                 }
-                panopliesUtilisateur.ajouterEquipement(panoplieSelectionneeId, nom);
-                equipementSelectionne = '';
+                panopliesUtilisateur.definirEquipement(panoplieSelectionneeId, emplacement, nom);
         }
 
-        // Retire un équipement de la panoplie courante.
-        function retirerEquipement(nom: string) {
+        function viderEmplacement(emplacement: EmplacementId) {
                 if (!panoplieSelectionneeId) return;
-                panopliesUtilisateur.retirerEquipement(panoplieSelectionneeId, nom);
+                panopliesUtilisateur.retirerEquipement(panoplieSelectionneeId, emplacement);
+        }
+
+        function validerAssignationSelectionnee() {
+                if (!panoplieSelectionneeId || !emplacementSelectionne || !equipementSelectionne) {
+                        alert('Veuillez choisir un emplacement et un équipement.');
+                        return;
+                }
+                assignerEquipement(emplacementSelectionne, equipementSelectionne);
+                equipementSelectionne = '';
         }
 
         // Met à jour le nom de la panoplie en direct.
@@ -168,6 +185,13 @@
                                                 placeholder="Rechercher un équipement"
                                                 bind:value={rechercheEquipement}
                                         />
+                                        <select bind:value={emplacementSelectionne}>
+                                                {#each EMPLACEMENTS_PANOPLIE as emplacement}
+                                                        <option value={emplacement.id}>
+                                                                {emplacement.nom}
+                                                        </option>
+                                                {/each}
+                                        </select>
                                         <select bind:value={equipementSelectionne}>
                                                 <option value="">Sélectionner</option>
                                                 {#each equipementsFiltres as equipement}
@@ -176,39 +200,45 @@
                                         </select>
                                         <button
                                                 type="button"
-                                                on:click={() => equipementSelectionne && ajouterEquipement(equipementSelectionne)}
-                                                disabled={!equipementSelectionne}
+                                                on:click={validerAssignationSelectionnee}
+                                                disabled={!equipementSelectionne || !emplacementSelectionne}
                                         >
                                                 Ajouter
                                         </button>
                                 </div>
                         </section>
 
-                        <section>
-                                <h3>Équipements sélectionnés</h3>
-                                {#if panoplieSelectionnee.equipements.length === 0}
-                                        <p>Aucun équipement dans cette panoplie pour l'instant.</p>
-                                {:else}
-                                        <ul class="equipements">
-                                                {#each panoplieSelectionnee.equipements as nom}
-                                                        {@const equipement = trouverEquipement(nom) as Equipement}
-                                                        <li>
-                                                                <div>
-                                                                        <strong>{nom}</strong>
-                                                                        {#if equipement}
-                                        <span>Niveau {equipement.niveau} · {libelleType(equipement?.Type)}</span>
-                                                                        {/if}
+                        <section class="emplacements">
+                                <h3>Emplacements de la panoplie</h3>
+                                <div class="grille-emplacements">
+                                        {#each EMPLACEMENTS_PANOPLIE as emplacement}
+                                                {@const nomAttribue = panoplieSelectionnee.emplacements[emplacement.id]}
+                                                {@const equipement = nomAttribue
+                                                        ? (trouverEquipement(nomAttribue) as Equipement | undefined)
+                                                        : null}
+                                                <article class:vide={!nomAttribue} data-categorie={emplacement.categorie}>
+                                                        <header>
+                                                                <h4>{emplacement.nom}</h4>
+                                                        </header>
+                                                        {#if equipement}
+                                                                <div class="details-equipement">
+                                                                        <strong>{equipement.nom}</strong>
+                                                                        <span>Niveau {equipement.niveau} · {libelleType(equipement.Type)}</span>
+                                                                        <div class="actions">
+                                                                                <a href={`/equipements/${encodeURIComponent(equipement.nom)}`}>
+                                                                                        Voir la fiche
+                                                                                </a>
+                                                                                <button type="button" on:click={() => viderEmplacement(emplacement.id)}>
+                                                                                        Retirer
+                                                                                </button>
+                                                                        </div>
                                                                 </div>
-                                                                <div class="boutons">
-                                                                        <a href={`/equipements/${encodeURIComponent(nom)}`}>Voir la fiche</a>
-                                                                        <button type="button" on:click={() => retirerEquipement(nom)}>
-                                                                                Retirer
-                                                                        </button>
-                                                                </div>
-                                                        </li>
-                                                {/each}
-                                        </ul>
-                                {/if}
+                                                        {:else}
+                                                                <p class="libre">Emplacement libre</p>
+                                                        {/if}
+                                                </article>
+                                        {/each}
+                                </div>
                         </section>
 
                         {#if resumePanoplie}
@@ -369,41 +399,68 @@
                 cursor: not-allowed;
         }
 
-        .equipements {
-                list-style: none;
-                padding: 0;
-                margin: 0;
+        .emplacements {
                 display: grid;
-                gap: 0.75rem;
-        }
-
-        .equipements li {
-                background: #f7f9fc;
-                border-radius: 0.75rem;
-                padding: 0.75rem;
-                display: flex;
-                justify-content: space-between;
                 gap: 1rem;
-                align-items: center;
         }
 
-        .equipements .boutons {
+        .grille-emplacements {
+                display: grid;
+                gap: 1rem;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .grille-emplacements article {
+                border-radius: 0.75rem;
+                padding: 1rem;
+                background: linear-gradient(145deg, #f7f9fc, #eef3fb);
+                display: grid;
+                gap: 0.5rem;
+                min-height: 160px;
+        }
+
+        .grille-emplacements article header h4 {
+                margin: 0;
+                font-size: 1rem;
+                color: #2a4a7b;
+        }
+
+        .grille-emplacements article.vide {
+                opacity: 0.8;
+        }
+
+        .grille-emplacements article .details-equipement {
+                display: grid;
+                gap: 0.35rem;
+        }
+
+        .grille-emplacements article .details-equipement strong {
+                font-size: 1rem;
+        }
+
+        .grille-emplacements article .details-equipement .actions {
                 display: flex;
                 gap: 0.5rem;
+                flex-wrap: wrap;
         }
 
-        .equipements a {
+        .grille-emplacements article .details-equipement a {
                 color: #2a4a7b;
                 text-decoration: none;
         }
 
-        .equipements button {
-                background: #d9534f;
+        .grille-emplacements article .details-equipement button {
+                background: #e84f4f;
                 color: white;
                 border: none;
                 border-radius: 0.5rem;
                 padding: 0.35rem 0.75rem;
                 cursor: pointer;
+        }
+
+        .grille-emplacements article .libre {
+                color: #6c7486;
+                font-style: italic;
         }
 
         .resume ul {

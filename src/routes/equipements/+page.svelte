@@ -2,6 +2,7 @@
         import equipements from '$lib/data/equipements.json';
         import { prixEquipements } from '$lib/stores/prix';
         import type { Equipement } from '$lib/types';
+        import { effetToImageUrl } from '$lib/utils/effets';
 
         function libelleType(brut: string | undefined) {
                 const valeur = brut?.trim();
@@ -93,7 +94,14 @@
                                                 <summary>Voir les effets principaux</summary>
                                                 <ul class="effets">
                                                         {#each Object.entries(effets) as [effet, valeur]}
-                                                                <li><strong>{effet} :</strong> {formaterValeur(valeur)}</li>
+                                                                <li>
+                                                                        <img
+                                                                                src={effetToImageUrl(effet)}
+                                                                                alt={effet}
+                                                                                on:error={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+                                                                        />
+                                                                        <span><strong>{effet} :</strong> {formaterValeur(valeur)}</span>
+                                                                </li>
                                                         {/each}
                                                 </ul>
                                         </details>
@@ -196,6 +204,19 @@
                 margin-top: 0.75rem;
                 display: grid;
                 gap: 0.35rem;
+                list-style: none;
+                padding: 0;
+        }
+
+        .effets li {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+        }
+
+        .effets img {
+                width: 28px;
+                height: 28px;
         }
 
         .prix {

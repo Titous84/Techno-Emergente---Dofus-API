@@ -33,13 +33,68 @@ export interface PanoplieOfficielle {
 /**
  * Représentation d'une panoplie personnalisée créée par l'utilisateur.
  */
+export type EmplacementId =
+        | 'chapeau'
+        | 'cape'
+        | 'collier'
+        | 'ceinture'
+        | 'anneau_1'
+        | 'anneau_2'
+        | 'bottes'
+        | 'arme'
+        | 'bouclier'
+        | 'familier'
+        | 'dofus_1'
+        | 'dofus_2'
+        | 'dofus_3'
+        | 'dofus_4'
+        | 'dofus_5'
+        | 'dofus_6';
+
+export type EmplacementsPanoplie = Record<EmplacementId, string | null>;
+
+export interface EmplacementDefinition {
+        /** Identifiant technique unique de l'emplacement. */
+        id: EmplacementId;
+        /** Libellé affiché dans l'interface. */
+        nom: string;
+        /** Catégorie pour regrouper visuellement les emplacements. */
+        categorie: 'équipement' | 'dofus' | 'compagnon';
+}
+
 export interface PanopliePersonnalisee {
         id: string;
         nom: string;
         description?: string;
-        equipements: string[];
+        emplacements: EmplacementsPanoplie;
         creeLe: string;
         modifieLe: string;
+}
+
+export const EMPLACEMENTS_PANOPLIE: EmplacementDefinition[] = [
+        { id: 'chapeau', nom: 'Chapeau', categorie: 'équipement' },
+        { id: 'cape', nom: 'Cape', categorie: 'équipement' },
+        { id: 'collier', nom: 'Collier', categorie: 'équipement' },
+        { id: 'ceinture', nom: 'Ceinture', categorie: 'équipement' },
+        { id: 'anneau_1', nom: 'Anneau 1', categorie: 'équipement' },
+        { id: 'anneau_2', nom: 'Anneau 2', categorie: 'équipement' },
+        { id: 'bottes', nom: 'Bottes', categorie: 'équipement' },
+        { id: 'arme', nom: 'Arme', categorie: 'équipement' },
+        { id: 'bouclier', nom: 'Bouclier', categorie: 'équipement' },
+        { id: 'familier', nom: 'Familier / Monture', categorie: 'compagnon' },
+        { id: 'dofus_1', nom: 'Dofus ou Idole 1', categorie: 'dofus' },
+        { id: 'dofus_2', nom: 'Dofus ou Idole 2', categorie: 'dofus' },
+        { id: 'dofus_3', nom: 'Dofus ou Idole 3', categorie: 'dofus' },
+        { id: 'dofus_4', nom: 'Dofus ou Idole 4', categorie: 'dofus' },
+        { id: 'dofus_5', nom: 'Dofus ou Idole 5', categorie: 'dofus' },
+        { id: 'dofus_6', nom: 'Dofus ou Idole 6', categorie: 'dofus' }
+];
+
+export function emplacementsVides(): EmplacementsPanoplie {
+        return EMPLACEMENTS_PANOPLIE.reduce<Partial<EmplacementsPanoplie>>((acc, emplacement) => {
+                acc[emplacement.id] = null;
+                return acc;
+        }, {}) as EmplacementsPanoplie;
 }
 
 /**
