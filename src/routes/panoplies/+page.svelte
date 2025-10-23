@@ -1,535 +1,451 @@
 <script lang="ts">
-        import { listerEquipements } from '$lib/services/base-de-donnees';
-        import { calculerSyntheseSet } from '$lib/services/analyse-sets';
+        import { get } from 'svelte/store';
+        import { calculerSynthesePanoplie } from '$lib/services/analyse-panoplies';
         import {
-                assignerEquipementAuSlot,
-                chargerSetDansConstruction,
-                definirPrixPourSlot,
-                definitionsSlots,
-                dupliquerSet,
-                enregistrerSetDepuisConstruction,
-                mettreAJourSet,
-                retirerEquipementDuSlot,
-                setActifId,
-                setEnCours,
-                setsSauvegardes,
-                supprimerSet,
-                viderSetEnCours
+                getEquipementParNom,
+                getPanoplieParNom,
+                listerPanoplies
+        } from '$lib/services/base-de-donnees';
+        import {
+                definirPanopliePourEquipement,
+                definirPrixPourEquipement,
+                equipementsUtilisateur,
+                reinitialiserPanopliesUtilisateur
         } from '$lib/stores/panoplies';
-        import type { Equipement, SlotEquipement } from '$lib/types';
+        import type { Equipement, Panoplie } from '$lib/types';
 
-        const equipements: Equipement[] = listerEquipements();
-        const nomsEquipements = equipements.map((eq) => eq.nom).sort((a, b) => a.localeCompare(b));
+        const panoplies = listerPanoplies();
+        let recherche = '';
+        let panoplieSelectionneeNom = panoplies[0]?.nom ?? '';
 
-        let nomSet = '';
-        let descriptionSet = '';
-        let message: string | null = null;
-        let dernierSetChargeId: string | null = null;
-
-        $: syntheseConstruction = calculerSyntheseSet({
-                id: 'construction',
-                nom: nomSet || 'Set en cours',
-                description: descriptionSet || undefined,
-                slots: $setEnCours,
-                creeLe: new Date().toISOString()
-        });
-
-        $: resumeSets = $setsSauvegardes.map((set) => ({
-                set,
-                synthese: calculerSyntheseSet(set)
-        }));
-
-        $: if ($setActifId !== dernierSetChargeId) {
-                const setCharge = resumeSets.find((item) => item.set.id === $setActifId);
-                nomSet = setCharge?.set.nom ?? '';
-                descriptionSet = setCharge?.set.description ?? '';
-                dernierSetChargeId = $setActifId;
-                if ($setActifId) {
-                        message = `Set « ${setCharge?.set.nom ?? ''} » chargé pour édition.`;
-                }
+        function normaliserTexte(texte: string): string {
+                return texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         }
 
-        function mettreAJourEquipement(slot: SlotEquipement, valeur: string) {
-                const nom = valeur.trim();
-                if (!nom) {
-                        retirerEquipementDuSlot(slot);
+        $: panopliesFiltrees = panoplies.filter((panoplie) =>
+                normaliserTexte(panoplie.nom).includes(normaliserTexte(recherche))
+        );
+
+        $: if (panopliesFiltrees.length > 0 && !panopliesFiltrees.some((p) => p.nom === panoplieSelectionneeNom)) {
+                panoplieSelectionneeNom = panopliesFiltrees[0].nom;
+        }
+
+        $: panoplieSelectionnee = panoplieSelectionneeNom
+                ? getPanoplieParNom(panoplieSelectionneeNom)
+                : undefined;
+
+        $: equipementsPanoplie = panoplieSelectionnee
+                ? panoplieSelectionnee.composition
+                                .map((nom) => getEquipementParNom(nom))
+                                .filter((equipement): equipement is Equipement => Boolean(equipement))
+                : [];
+
+        $: synthese = panoplieSelectionnee
+                ? calculerSynthesePanoplie(panoplieSelectionnee.nom, $equipementsUtilisateur)
+                : null;
+
+        function basculerEquipementDansPanoplie(nom: string, actif: boolean) {
+                if (!panoplieSelectionnee) {
                         return;
                 }
 
-                assignerEquipementAuSlot(slot, nom);
+                definirPanopliePourEquipement(nom, actif ? panoplieSelectionnee.nom : null);
         }
 
-        function mettreAJourPrix(slot: SlotEquipement, valeur: string) {
+        function mettreAJourPrix(nom: string, valeur: string) {
                 const nettoye = valeur.replace(/\s/g, '');
                 if (!nettoye) {
-                        definirPrixPourSlot(slot, null);
+                        definirPrixPourEquipement(nom, null);
                         return;
                 }
 
                 const montant = Number(nettoye);
-                definirPrixPourSlot(slot, Number.isFinite(montant) && montant >= 0 ? Math.round(montant) : null);
+                definirPrixPourEquipement(nom, Number.isFinite(montant) && montant >= 0 ? Math.round(montant) : null);
         }
 
-        function sauvegarderConstruction() {
-                if (!nomSet.trim()) {
-                        message = 'Donnez un nom à votre set avant de l’enregistrer.';
-                        return;
+        function formaterIntervalle(intervalle: { min: number; max: number }): string {
+                if (intervalle.min === intervalle.max) {
+                        return intervalle.min.toString();
                 }
 
-                if ($setActifId) {
-                        mettreAJourSetExiste($setActifId);
-                        message = 'Set mis à jour avec succès.';
-                } else {
-                        const id = enregistrerSetDepuisConstruction(
-                                nomSet.trim(),
-                                descriptionSet.trim() || undefined
-                        );
-                        dernierSetChargeId = id;
-                        message = 'Nouveau set enregistré.';
-                }
+                return `${intervalle.min} à ${intervalle.max}`;
         }
 
-        function mettreAJourSetExiste(id: string) {
-                mettreAJourSet(id, {
-                        nom: nomSet.trim(),
-                        description: descriptionSet.trim() || undefined,
-                        slots: $setEnCours
-                });
-        }
-
-        function enregistrerCommeNouveau() {
-                if (!nomSet.trim()) {
-                        message = 'Choisissez un nom pour créer un nouveau set.';
-                        return;
+        function formaterPrix(valeur: number | null | undefined): string {
+                if (valeur === null || valeur === undefined) {
+                        return '—';
                 }
 
-                const id = enregistrerSetDepuisConstruction(
-                        nomSet.trim(),
-                        descriptionSet.trim() || undefined
-                );
-                message = 'Copie enregistrée comme nouveau set.';
-                dernierSetChargeId = id;
-        }
-
-        function reinitialiserConstruction() {
-                viderSetEnCours();
-                nomSet = '';
-                descriptionSet = '';
-                dernierSetChargeId = null;
-                message = 'Construction réinitialisée.';
-        }
-
-        function selectionnerSet(id: string) {
-                chargerSetDansConstruction(id);
-        }
-
-        function dupliquerEtEditer(id: string) {
-                const nouveau = dupliquerSet(id);
-                if (nouveau) {
-                        chargerSetDansConstruction(nouveau);
-                        message = 'Copie du set prête à être personnalisée.';
-                }
-        }
-
-        function supprimerEtReinitialiser(id: string) {
-                if (!confirm('Supprimer ce set enregistré ?')) {
-                        return;
-                }
-
-                supprimerSet(id);
-                if (dernierSetChargeId === id) {
-                        nomSet = '';
-                        descriptionSet = '';
-                        dernierSetChargeId = null;
-                }
-                message = 'Set supprimé.';
+                return new Intl.NumberFormat('fr-CA').format(valeur);
         }
 </script>
 
-<svelte:head>
-        <title>Construction de sets personnalisés</title>
-</svelte:head>
-
-<section class="intro">
+<header class="entete">
         <div>
-                <h2>Construire mes sets</h2>
-                <p>
-                        Complétez chaque emplacement avec un équipement et son prix, puis enregistrez l&rsquo;ensemble comme
-                        nouveau set pour la comparaison.
-                </p>
+                <h2>Gestion des panoplies</h2>
+                <p>Activez les pièces dont vous disposez et consignez leur prix pour obtenir une synthèse instantanée.</p>
         </div>
-        <div class="actions-intro">
-                <button type="button" class="secondaire" on:click={reinitialiserConstruction}>
-                        Réinitialiser la construction
-                </button>
-        </div>
+        <button type="button" class="bouton-secondaire" on:click={reinitialiserPanopliesUtilisateur}>
+                Réinitialiser mes suivis
+        </button>
+</header>
+
+<section class="outils-selection">
+        <label>
+                <span>Recherche</span>
+                <input type="search" placeholder="Nom de panoplie" bind:value={recherche} />
+        </label>
+        <label>
+                <span>Panoplie sélectionnée</span>
+                <select bind:value={panoplieSelectionneeNom}>
+                        {#each panopliesFiltrees as panoplie}
+                                <option value={panoplie.nom}>{panoplie.nom}</option>
+                        {/each}
+                </select>
+        </label>
+        <p class="compteur">{panopliesFiltrees.length} panoplie(s) correspondante(s)</p>
 </section>
 
-<section class="edition">
-        <header class="entete-set">
-                <div>
-                        <label>
-                                <span>Nom du set</span>
-                                <input type="text" bind:value={nomSet} placeholder="Ex. Panoplie PvM Terre" />
-                        </label>
-                        <label>
-                                <span>Description / notes</span>
-                                <textarea rows="2" bind:value={descriptionSet} placeholder="Objectifs, variantes, etc."></textarea>
-                        </label>
+{#if panoplieSelectionnee}
+        <section class="presentation">
+                <div class="resume">
+                        <h3>{panoplieSelectionnee.nom}</h3>
+                        <p>Niveau recommandé : {panoplieSelectionnee.niveau ?? '—'}</p>
+                        <p>Pièces officielles : {panoplieSelectionnee.composition.length}</p>
+                        {#if synthese}
+                                <p>
+                                        Pièces actives suivies : {synthese.nombrePiecesActives} / {panoplieSelectionnee.composition.length}
+                                </p>
+                        {/if}
                 </div>
-                <div class="resume-set">
-                        <h3>Résumé rapide</h3>
-                        <p>{syntheseConstruction.slotsActifs} emplacement(s) complété(s) sur {definitionsSlots.length}</p>
-                        <p>Prix total estimé : {new Intl.NumberFormat('fr-CA').format(syntheseConstruction.prixTotal)} kamas</p>
-                        <p>Niveau minimal suggéré : {syntheseConstruction.niveauMinimal}</p>
-                </div>
-        </header>
+                {#if panoplieSelectionnee.illustration_url}
+                        <img src={panoplieSelectionnee.illustration_url} alt={panoplieSelectionnee.nom} />
+                {/if}
+        </section>
 
-        {#if message}
-                <p class="message">{message}</p>
-        {/if}
+        <section class="liste-equipements">
+                {#if equipementsPanoplie.length === 0}
+                        <p>Aucun équipement n&rsquo;a été trouvé pour cette panoplie dans les données locales.</p>
+                {:else}
+                        {#each equipementsPanoplie as equipement}
+                                {@const etat = $equipementsUtilisateur[equipement.nom]}
+                                {@const estActif = etat?.panoplie === panoplieSelectionnee.nom}
+                                <article class:actif={estActif}>
+                                        <header>
+                                                <div class="titre">
+                                                        {#if equipement.illustration_url}
+                                                                <img src={equipement.illustration_url} alt={equipement.nom} />
+                                                        {/if}
+                                                        <div>
+                                                                <h4>{equipement.nom}</h4>
+                                                                <p>Niveau {equipement.niveau ?? '—'} · {equipement.Type ?? 'Type inconnu'}</p>
+                                                        </div>
+                                                </div>
+                                                <label class="toggle">
+                                                        <input
+                                                                type="checkbox"
+                                                                checked={estActif}
+                                                                on:change={(event) =>
+                                                                        basculerEquipementDansPanoplie(
+                                                                                equipement.nom,
+                                                                                (event.currentTarget as HTMLInputElement).checked
+                                                                        )
+                                                                }
+                                                        />
+                                                        <span>Inclure</span>
+                                                </label>
+                                        </header>
 
-        <div class="grille-slots">
-                {#each definitionsSlots as slot}
-                        {@const selection = $setEnCours[slot.id]}
-                        <article class:vide={!selection?.equipementNom}>
-                                <header>
-                                        <h4>{slot.libelle}</h4>
-                                        <p>{slot.description}</p>
-                                </header>
-                                <label>
-                                        <span>Équipement</span>
-                                        <input
-                                                type="text"
-                                                list={`equipements-${slot.id}`}
-                                                value={selection?.equipementNom ?? ''}
-                                                on:change={(event) =>
-                                                        mettreAJourEquipement(
-                                                                slot.id,
-                                                                (event.currentTarget as HTMLInputElement).value
-                                                        )
-                                                }
-                                                placeholder="Nom exact de l’équipement"
-                                        />
-                                        <datalist id={`equipements-${slot.id}`}>
-                                                {#each nomsEquipements as nom}
-                                                        <option value={nom}></option>
-                                                {/each}
-                                        </datalist>
-                                </label>
-                                <label>
-                                        <span>Prix (kamas)</span>
-                                        <input
-                                                type="number"
-                                                min="0"
-                                                step="100"
-                                                value={selection?.prix ?? ''}
-                                                on:change={(event) =>
-                                                        mettreAJourPrix(
-                                                                slot.id,
-                                                                (event.currentTarget as HTMLInputElement).value
-                                                        )
-                                                }
-                                                placeholder="À déterminer"
-                                        />
-                                </label>
-                                <div class="actions-slot">
-                                        <button type="button" on:click={() => retirerEquipementDuSlot(slot.id)}>
-                                                Vider cet emplacement
-                                        </button>
-                                        {#if selection?.equipementNom}
-                                                <a
-                                                        class="lien-fiche"
-                                                        href={`/equipements/${encodeURIComponent(selection.equipementNom)}`}
-                                                >
-                                                        Voir la fiche
-                                                </a>
+                                        <div class="contenu">
+                                                <label>
+                                                        <span>Prix (kamas)</span>
+                                                        <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="100"
+                                                                value={etat?.prix ?? ''}
+                                                                disabled={!estActif}
+                                                                on:change={(event) =>
+                                                                        mettreAJourPrix(
+                                                                                equipement.nom,
+                                                                                (event.currentTarget as HTMLInputElement).value
+                                                                        )
+                                                                }
+                                                        />
+                                                </label>
+                                                <p class="resume-effets">
+                                                        {#if equipement.effets}
+                                                                Effets clés : {Object.keys(equipement.effets).slice(0, 3).join(', ')}
+                                                        {:else}
+                                                                Aucun effet recensé dans la base locale.
+                                                        {/if}
+                                                </p>
+                                        </div>
+                                </article>
+                        {/each}
+                {/if}
+        </section>
+
+        {#if synthese}
+                <section class="synthese">
+                        <h3>Synthèse de la panoplie</h3>
+                        <div class="grille">
+                                <div>
+                                        <h4>Prix total</h4>
+                                        <p class="valeur">
+                                                {formaterPrix(synthese.prixTotal)} kamas
+                                        </p>
+                                        {#if synthese.prixManquants.length > 0}
+                                                <p class="note">
+                                                        Prix manquant pour : {synthese.prixManquants.join(', ')}
+                                                </p>
                                         {/if}
                                 </div>
-                        </article>
-                {/each}
-        </div>
+                                <div>
+                                        <h4>Niveau minimal</h4>
+                                        <p class="valeur">{synthese.niveauMinimal}</p>
+                                </div>
+                                <div>
+                                        <h4>Pièces actives</h4>
+                                        <p class="valeur">
+                                                {synthese.nombrePiecesActives} / {panoplieSelectionnee.composition.length}
+                                        </p>
+                                </div>
+                        </div>
 
-        <footer class="actions-sauvegarde">
-                <button type="button" class="primaire" on:click={sauvegarderConstruction}>
-                        {$setActifId ? 'Mettre à jour ce set' : 'Enregistrer ce set'}
-                </button>
-                <button type="button" class="secondaire" on:click={enregistrerCommeNouveau}>
-                        Enregistrer comme nouveau set
-                </button>
-        </footer>
-</section>
+                        <div class="tableau-effets">
+                                <h4>Statistiques cumulées</h4>
+                                <ul>
+                                        {#each Object.entries(synthese.effetsTotals) as [effet, intervalle]}
+                                                <li>
+                                                        <strong>{effet}</strong>
+                                                        <span>{formaterIntervalle(intervalle)}</span>
+                                                </li>
+                                        {/each}
+                                </ul>
+                        </div>
 
-<section class="liste-sets">
-        <h3>Sets enregistrés</h3>
-        {#if resumeSets.length === 0}
-                <p>Aucun set n&rsquo;est enregistré pour le moment. Créez votre premier ensemble ci-dessus.</p>
-        {:else}
-                <ul>
-                        {#each resumeSets as item}
-                                <li>
-                                        <div class="en-tete">
-                                                <button type="button" on:click={() => selectionnerSet(item.set.id)}>
-                                                        {item.set.nom}
-                                                </button>
-                                                <span class="date">{new Date(item.set.creeLe).toLocaleDateString('fr-CA')}</span>
-                                        </div>
-                                        <p class="notes">{item.set.description ?? 'Aucune note ajoutée.'}</p>
-                                        <ul class="resume">
-                                                <li>{item.synthese.slotsActifs} emplacement(s) complété(s)</li>
-                                                <li>Prix total : {new Intl.NumberFormat('fr-CA').format(item.synthese.prixTotal)} kamas</li>
-                                                <li>Niveau minimal : {item.synthese.niveauMinimal}</li>
-                                                {#if item.synthese.prixManquants.length}
-                                                        <li>Prix manquant pour : {item.synthese.prixManquants.map((slotId) =>
-                                                                definitionsSlots.find((slot) => slot.id === slotId)?.libelle ?? slotId
-                                                        ).join(', ')}</li>
-                                                {/if}
+                        {#if Object.keys(synthese.effetsBonus).length > 0}
+                                <div class="tableau-effets">
+                                        <h4>Bonus de panoplie appliqués</h4>
+                                        <ul>
+                                                {#each Object.entries(synthese.effetsBonus) as [effet, intervalle]}
+                                                        <li>
+                                                                <strong>{effet}</strong>
+                                                                <span>{formaterIntervalle(intervalle)}</span>
+                                                        </li>
+                                                {/each}
                                         </ul>
-                                        <div class="actions">
-                                                <button type="button" on:click={() => selectionnerSet(item.set.id)}>
-                                                        Charger dans l’éditeur
-                                                </button>
-                                                <button type="button" on:click={() => dupliquerEtEditer(item.set.id)}>
-                                                        Dupliquer
-                                                </button>
-                                                <button
-                                                        type="button"
-                                                        class="danger"
-                                                        on:click={() => supprimerEtReinitialiser(item.set.id)}
-                                                >
-                                                        Supprimer
-                                                </button>
-                                        </div>
-                                </li>
-                        {/each}
-                </ul>
+                                </div>
+                        {/if}
+
+                        <div class="liste-prix">
+                                <h4>Détail des prix saisis</h4>
+                                <ul>
+                                        {#each synthese.prixDetails as detail}
+                                                <li>
+                                                        <span>{detail.nom}</span>
+                                                        <span>{formaterPrix(detail.prix)} kamas</span>
+                                                </li>
+                                        {/each}
+                                </ul>
+                        </div>
+                </section>
         {/if}
-</section>
+{:else}
+        <p>Aucune panoplie ne correspond à la recherche actuelle.</p>
+{/if}
 
 <style>
-        .intro {
+        .entete {
                 display: flex;
                 flex-wrap: wrap;
                 justify-content: space-between;
+                align-items: center;
                 gap: 1rem;
                 margin-bottom: 1.5rem;
-                align-items: center;
         }
 
-        .actions-intro {
-                display: flex;
-                gap: 0.75rem;
-        }
-
-        button {
-                border: none;
-                border-radius: 0.75rem;
-                padding: 0.6rem 1.1rem;
+        .bouton-secondaire {
+                background: transparent;
+                border: 1px solid #d14343;
+                color: #d14343;
+                border-radius: 0.65rem;
+                padding: 0.6rem 1rem;
                 font-weight: 600;
                 cursor: pointer;
+                transition: background 0.2s ease, color 0.2s ease;
         }
 
-        .primaire {
-                background: linear-gradient(120deg, #38bdf8, #6366f1);
-                color: #0f172a;
+        .bouton-secondaire:hover,
+        .bouton-secondaire:focus-visible {
+                background: #d14343;
+                color: white;
+                outline: none;
         }
 
-        .secondaire {
-                background: rgba(148, 163, 184, 0.2);
-                color: #1f2937;
-        }
-
-        .danger {
-                background: rgba(248, 113, 113, 0.2);
-                color: #b91c1c;
-        }
-
-        .edition {
+        .outils-selection {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 1rem;
                 background: white;
+                padding: 1.5rem;
                 border-radius: 0.75rem;
                 box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
-                padding: 1.5rem;
                 margin-bottom: 2rem;
-                display: grid;
-                gap: 1.5rem;
         }
 
-        .entete-set {
-                display: grid;
-                gap: 1rem;
-                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        }
-
-        .entete-set label {
+        label {
                 display: flex;
                 flex-direction: column;
-                gap: 0.5rem;
+                gap: 0.35rem;
                 font-weight: 600;
         }
 
         input,
-        textarea {
+        select {
                 padding: 0.65rem;
                 border-radius: 0.5rem;
                 border: 1px solid #cdd6f6;
         }
 
-        textarea {
-                resize: vertical;
+        .compteur {
+                margin: auto 0 0 auto;
+                font-weight: 600;
+                color: #1f3c88;
         }
 
-        .resume-set {
-                background: #f0f4ff;
-                border-radius: 0.75rem;
-                padding: 1rem;
+        .presentation {
                 display: flex;
-                flex-direction: column;
+                flex-wrap: wrap;
+                gap: 1.5rem;
+                align-items: center;
+                background: white;
+                padding: 1.5rem;
+                border-radius: 0.75rem;
+                box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
+                margin-bottom: 2rem;
+        }
+
+        .presentation img {
+                max-height: 140px;
+        }
+
+        .resume {
+                display: grid;
                 gap: 0.35rem;
         }
 
-        .message {
-                margin: 0;
-                padding: 0.75rem 1rem;
-                border-radius: 0.65rem;
-                background: rgba(56, 189, 248, 0.2);
-                border: 1px solid rgba(56, 189, 248, 0.45);
-                color: #0f172a;
-                font-weight: 600;
-        }
-
-        .grille-slots {
+        .liste-equipements {
                 display: grid;
-                gap: 1.25rem;
-                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                gap: 1.5rem;
         }
 
-        article {
-                background: #f8fafc;
-                border-radius: 0.75rem;
-                padding: 1rem;
-                border: 1px solid transparent;
-                display: flex;
-                flex-direction: column;
-                gap: 0.75rem;
-        }
-
-        article.vide {
-                border-color: rgba(148, 163, 184, 0.4);
-        }
-
-        article h4 {
-                margin: 0;
-        }
-
-        article p {
-                margin: 0;
-                color: #4b5563;
-                font-size: 0.9rem;
-        }
-
-        article label {
-                display: flex;
-                flex-direction: column;
-                gap: 0.5rem;
-                font-weight: 600;
-        }
-
-        .actions-slot {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 0.75rem;
-        }
-
-        .actions-slot button {
-                background: rgba(148, 163, 184, 0.2);
-                color: #1f2937;
-                border-radius: 0.65rem;
-                padding: 0.45rem 0.9rem;
-        }
-
-        .actions-slot .lien-fiche {
-                color: #2563eb;
-                text-decoration: none;
-        }
-
-        .actions-slot .lien-fiche:hover,
-        .actions-slot .lien-fiche:focus-visible {
-                text-decoration: underline;
-        }
-
-        .actions-sauvegarde {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 0.75rem;
-        }
-
-        .liste-sets {
+        .liste-equipements article {
                 background: white;
                 border-radius: 0.75rem;
                 box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
                 padding: 1.5rem;
-        }
-
-        .liste-sets ul {
-                list-style: none;
-                margin: 0;
-                padding: 0;
                 display: grid;
                 gap: 1rem;
+                border: 2px solid transparent;
         }
 
-        .liste-sets li {
-                border: 1px solid rgba(148, 163, 184, 0.3);
-                border-radius: 0.75rem;
-                padding: 1rem;
-                display: flex;
-                flex-direction: column;
-                gap: 0.75rem;
+        .liste-equipements article.actif {
+                border-color: #1f3c88;
         }
 
-        .liste-sets .en-tete {
+        .liste-equipements header {
                 display: flex;
                 justify-content: space-between;
+                gap: 1rem;
+                flex-wrap: wrap;
+        }
+
+        .titre {
+                display: flex;
+                gap: 1rem;
                 align-items: center;
         }
 
-        .liste-sets .en-tete button {
-                background: none;
-                color: #1f2937;
-                padding: 0;
-                border-radius: 0;
+        .titre img {
+                height: 56px;
+                width: 56px;
         }
 
-        .liste-sets .date {
-                font-size: 0.85rem;
-                color: #64748b;
+        .toggle {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                font-weight: 600;
         }
 
-        .liste-sets .notes {
+        .contenu {
+                display: grid;
+                gap: 0.75rem;
+        }
+
+        .resume-effets {
                 margin: 0;
                 color: #4b5563;
         }
 
-        .liste-sets .resume {
+        .synthese {
+                margin-top: 2rem;
+                background: white;
+                border-radius: 0.75rem;
+                box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
+                padding: 1.5rem;
                 display: grid;
-                gap: 0.35rem;
-                padding-left: 1rem;
+                gap: 1.5rem;
         }
 
-        .liste-sets .actions {
+        .grille {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                gap: 1rem;
+        }
+
+        .valeur {
+                font-size: 1.4rem;
+                font-weight: 700;
+        }
+
+        .note {
+                margin: 0.35rem 0 0 0;
+                color: #b45309;
+        }
+
+        .tableau-effets ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                display: grid;
+                gap: 0.5rem;
+        }
+
+        .tableau-effets li {
                 display: flex;
-                flex-wrap: wrap;
-                gap: 0.75rem;
+                justify-content: space-between;
+                gap: 1rem;
         }
 
-        @media (max-width: 720px) {
-                .actions-slot {
-                        flex-direction: column;
-                        align-items: flex-start;
-                }
+        .liste-prix ul {
+                list-style: none;
+                padding: 0;
+                margin: 0;
+                display: grid;
+                gap: 0.5rem;
+        }
 
-                .actions-sauvegarde {
+        .liste-prix li {
+                display: flex;
+                justify-content: space-between;
+        }
+
+        @media (max-width: 650px) {
+                .tableau-effets li,
+                .liste-prix li {
                         flex-direction: column;
                         align-items: flex-start;
                 }

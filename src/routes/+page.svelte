@@ -10,9 +10,9 @@
         <article>
                 <h3>Identification des besoins</h3>
                 <ul>
-                        <li>Centraliser les informations d&rsquo;équipements et de sets personnalisés de Dofus.</li>
+                        <li>Centraliser les informations d&rsquo;équipements et de panoplies de Dofus.</li>
                         <li>Permettre le suivi des prix du marché pour chacune des pièces.</li>
-                        <li>Comparer facilement deux constructions pour orienter le choix des joueurs.</li>
+                        <li>Comparer facilement deux ensembles pour orienter le choix des joueurs.</li>
                 </ul>
         </article>
 
@@ -37,8 +37,8 @@
                 <h3>Structure du prototype</h3>
                 <ul>
                         <li>Liste et fiche détaillée des équipements.</li>
-                        <li>Construction de sets avec saisie des prix et suivi local.</li>
-                        <li>Tableau de comparaison de deux sets personnalisés.</li>
+                        <li>Gestion des panoplies avec saisie des prix et suivi local.</li>
+                        <li>Tableau de comparaison de deux panoplies.</li>
                 </ul>
         </article>
 </section>
@@ -48,15 +48,15 @@
         <div class="cartes-liens">
                 <a class="carte" href="/equipements">
                         <h4>Équipements</h4>
-                        <p>Recherche, fiche descriptive et ajout rapide au set en cours.</p>
+                        <p>Recherche, fiche descriptive et association à une panoplie.</p>
                 </a>
                 <a class="carte" href="/panoplies">
-                        <h4>Construction des sets</h4>
-                        <p>Préparer chaque emplacement, conserver les prix et enregistrer des variantes.</p>
+                        <h4>Gestion des panoplies</h4>
+                        <p>Suivi des pièces, des prix et synthèse automatique des statistiques.</p>
                 </a>
                 <a class="carte" href="/comparaison">
                         <h4>Comparaison</h4>
-                        <p>Comparer deux sets personnalisés pour valider la stratégie retenue.</p>
+                        <p>Comparer deux panoplies pour valider la stratégie retenue.</p>
                 </a>
         </div>
 </section>

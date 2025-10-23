@@ -1,7 +1,7 @@
 <script lang="ts">
         import { listerEquipements, rechercherEquipements } from '$lib/services/base-de-donnees';
-        import { definitionsSlots, setEnCours } from '$lib/stores/panoplies';
-        import type { DefinitionSlot, Equipement } from '$lib/types';
+        import { equipementsUtilisateur } from '$lib/stores/panoplies';
+        import type { Equipement } from '$lib/types';
 
         const tousLesEquipements = listerEquipements();
         const typesDisponibles = ['Tous', ...new Set(tousLesEquipements.map((eq) => eq.Type).filter(Boolean))];
@@ -13,20 +13,6 @@
         $: equipementsFiltres = resultatRecherche.filter((equipement) =>
                 typeSelectionne === 'Tous' || equipement.Type === typeSelectionne
         );
-
-        $: placementDansSet = (() => {
-                const resultat = new Map<string, { slot: DefinitionSlot; prix: number | null }>();
-                for (const definition of definitionsSlots) {
-                        const selection = $setEnCours[definition.id];
-                        if (selection?.equipementNom) {
-                                resultat.set(selection.equipementNom, {
-                                        slot: definition,
-                                        prix: typeof selection.prix === 'number' ? selection.prix : null
-                                });
-                        }
-                }
-                return resultat;
-        })();
 
         function formaterNombre(valeur: number | null | undefined): string {
                 if (valeur === null || valeur === undefined) {
@@ -44,11 +30,11 @@
         <div>
                 <h2>Explorer les équipements</h2>
                 <p>
-                        Recherchez un objet pour consulter sa fiche complète, saisir son prix et l&rsquo;ajouter à votre set
-                        en construction.
+                        Recherchez un objet pour consulter sa fiche complète, le relier à une panoplie et suivre son
+                        prix.
                 </p>
         </div>
-        <a class="lien-action" href="/panoplies">Construire mes sets</a>
+        <a class="lien-action" href="/panoplies">Gérer mes panoplies</a>
 </header>
 
 <section class="outils-recherche">
@@ -93,21 +79,14 @@
                                         <dd>{nombreEffets(equipement)}</dd>
                                 </div>
                                 <div>
-                                        <dt>Emplacement suivi</dt>
-                                        <dd>
-                                                {#if placementDansSet.has(equipement.nom)}
-                                                        {placementDansSet.get(equipement.nom)?.slot.libelle}
-                                                {:else}
-                                                        Non placé
-                                                {/if}
-                                        </dd>
+                                        <dt>Panoplie associée</dt>
+                                        <dd>{($equipementsUtilisateur[equipement.nom]?.panoplie) ?? 'Non liée'}</dd>
                                 </div>
                                 <div>
                                         <dt>Prix saisi</dt>
                                         <dd>
-                                                {#if placementDansSet.has(equipement.nom) &&
-                                                typeof placementDansSet.get(equipement.nom)?.prix === 'number'}
-                                                        {formaterNombre(placementDansSet.get(equipement.nom)?.prix ?? null)} kamas
+                                                {#if typeof $equipementsUtilisateur[equipement.nom]?.prix === 'number'}
+                                                        {formaterNombre($equipementsUtilisateur[equipement.nom]?.prix)} kamas
                                                 {:else}
                                                         À préciser
                                                 {/if}

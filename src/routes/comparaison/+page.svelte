@@ -1,43 +1,36 @@
 <script lang="ts">
-        import { calculerSyntheseSet } from '$lib/services/analyse-sets';
+        import { calculerSynthesePanoplie } from '$lib/services/analyse-panoplies';
+        import { listerPanoplies } from '$lib/services/base-de-donnees';
         import {
-                comparaisonSets,
-                definirComparaisonSet,
-                definitionsSlots,
-                setsSauvegardes
+                definirComparaisonPanoplies,
+                equipementsUtilisateur,
+                selectionComparaison
         } from '$lib/stores/panoplies';
 
-        $: setsDisponibles = $setsSauvegardes;
-        $: comparaison = $comparaisonSets;
+        const panoplies = listerPanoplies();
 
-        function trouverSet(id: string | null) {
-                if (!id) {
-                        return null;
-                }
-                return setsDisponibles.find((set) => set.id === id) ?? null;
-        }
-
-        $: syntheseA = (() => {
-                const set = trouverSet(comparaison[0]);
-                return set ? calculerSyntheseSet(set) : null;
-        })();
-
-        $: syntheseB = (() => {
-                const set = trouverSet(comparaison[1]);
-                return set ? calculerSyntheseSet(set) : null;
-        })();
+        $: comparaison = $selectionComparaison;
+        $: syntheseA = comparaison[0]
+                ? calculerSynthesePanoplie(comparaison[0], $equipementsUtilisateur)
+                : null;
+        $: syntheseB = comparaison[1]
+                ? calculerSynthesePanoplie(comparaison[1], $equipementsUtilisateur)
+                : null;
 
         $: effetsFusionnes = Array.from(
-                new Set([...(syntheseA ? Object.keys(syntheseA.effetsTotals) : []), ...(syntheseB ? Object.keys(syntheseB.effetsTotals) : [])])
+                new Set([
+                        ...(syntheseA ? Object.keys(syntheseA.effetsTotals) : []),
+                        ...(syntheseB ? Object.keys(syntheseB.effetsTotals) : [])
+                ])
         ).sort((a, b) => a.localeCompare(b));
 
         function mettreAJourSelection(index: 0 | 1, valeur: string) {
-                definirComparaisonSet(index, valeur || null);
+                definirComparaisonPanoplies(index, valeur || null);
         }
 
         function permuter() {
-                definirComparaisonSet(0, comparaison[1] ?? null);
-                definirComparaisonSet(1, comparaison[0] ?? null);
+                definirComparaisonPanoplies(0, comparaison[1] ?? null);
+                definirComparaisonPanoplies(1, comparaison[0] ?? null);
         }
 
         function formaterIntervalle(intervalle: { min: number; max: number } | undefined | null) {
@@ -87,17 +80,10 @@
         }
 </script>
 
-<svelte:head>
-        <title>Comparer mes sets enregistrés</title>
-</svelte:head>
-
 <header class="entete">
         <div>
-                <h2>Comparateur de sets</h2>
-                <p>
-                        Sélectionnez deux ensembles enregistrés pour comparer leurs statistiques cumulées, leur niveau
-                        minimal et le coût estimé.
-                </p>
+                <h2>Comparateur de panoplies</h2>
+                <p>Choisissez deux panoplies pour visualiser instantanément les écarts de statistiques et de prix.</p>
         </div>
         <button type="button" class="bouton-permuter" on:click={permuter}>
                 Inverser A ↔ B
@@ -106,20 +92,20 @@
 
 <section class="selection">
         <div class="bloc-selection">
-                <h3>Set A</h3>
+                <h3>Panoplie A</h3>
                 <select value={comparaison[0] ?? ''} on:change={(event) => mettreAJourSelection(0, (event.currentTarget as HTMLSelectElement).value)}>
-                        <option value="">Aucun set</option>
-                        {#each setsDisponibles as set}
-                                <option value={set.id}>{set.nom}</option>
+                        <option value="">Aucune sélection</option>
+                        {#each panoplies as panoplie}
+                                <option value={panoplie.nom}>{panoplie.nom}</option>
                         {/each}
                 </select>
         </div>
         <div class="bloc-selection">
-                <h3>Set B</h3>
+                <h3>Panoplie B</h3>
                 <select value={comparaison[1] ?? ''} on:change={(event) => mettreAJourSelection(1, (event.currentTarget as HTMLSelectElement).value)}>
-                        <option value="">Aucun set</option>
-                        {#each setsDisponibles as set}
-                                <option value={set.id}>{set.nom}</option>
+                        <option value="">Aucune sélection</option>
+                        {#each panoplies as panoplie}
+                                <option value={panoplie.nom}>{panoplie.nom}</option>
                         {/each}
                 </select>
         </div>
@@ -127,29 +113,29 @@
 
 <section class="resume-comparaison">
         <div>
-                <h4>Set A</h4>
+                <h4>Panoplie A</h4>
                 {#if syntheseA}
-                        <p class="titre-set">{syntheseA.set.nom}</p>
+                        <p class="titre-panoplie">{syntheseA.panoplie.nom}</p>
                         <ul>
                                 <li>Prix total : {formaterPrix(syntheseA.prixTotal)} kamas</li>
                                 <li>Niveau minimal : {syntheseA.niveauMinimal}</li>
-                                <li>Emplacements actifs : {syntheseA.slotsActifs} / {definitionsSlots.length}</li>
+                                <li>Pièces actives : {syntheseA.nombrePiecesActives} / {syntheseA.panoplie.composition.length}</li>
                         </ul>
                 {:else}
-                        <p>Aucun set A sélectionné.</p>
+                        <p>Aucune panoplie A sélectionnée.</p>
                 {/if}
         </div>
         <div>
-                <h4>Set B</h4>
+                <h4>Panoplie B</h4>
                 {#if syntheseB}
-                        <p class="titre-set">{syntheseB.set.nom}</p>
+                        <p class="titre-panoplie">{syntheseB.panoplie.nom}</p>
                         <ul>
                                 <li>Prix total : {formaterPrix(syntheseB.prixTotal)} kamas</li>
                                 <li>Niveau minimal : {syntheseB.niveauMinimal}</li>
-                                <li>Emplacements actifs : {syntheseB.slotsActifs} / {definitionsSlots.length}</li>
+                                <li>Pièces actives : {syntheseB.nombrePiecesActives} / {syntheseB.panoplie.composition.length}</li>
                         </ul>
                 {:else}
-                        <p>Aucun set B sélectionné.</p>
+                        <p>Aucune panoplie B sélectionnée.</p>
                 {/if}
         </div>
         <div>
@@ -175,65 +161,84 @@
         </div>
 </section>
 
-<section class="tableau-effets">
-        <table>
-                <caption>Comparaison détaillée des effets cumulés</caption>
-                <thead>
-                        <tr>
-                                <th>Effet</th>
-                                <th>Set A</th>
-                                <th>Set B</th>
-                                <th>Écart (B - A)</th>
-                        </tr>
-                </thead>
-                <tbody>
-                        {#each effetsFusionnes as effet}
+{#if syntheseA || syntheseB}
+        <section class="tableau">
+                <h3>Comparaison des statistiques</h3>
+                <table>
+                        <thead>
                                 <tr>
-                                        <th scope="row">{effet}</th>
-                                        <td>{formaterIntervalle(syntheseA?.effetsTotals[effet])}</td>
-                                        <td>{formaterIntervalle(syntheseB?.effetsTotals[effet])}</td>
-                                        <td>{differenceIntervalle(syntheseA?.effetsTotals[effet], syntheseB?.effetsTotals[effet])}</td>
+                                        <th>Effet</th>
+                                        <th>Panoplie A</th>
+                                        <th>Panoplie B</th>
+                                        <th>Écart (B - A)</th>
                                 </tr>
-                        {/each}
-                </tbody>
-        </table>
-</section>
+                        </thead>
+                        <tbody>
+                                {#each effetsFusionnes as effet}
+                                        {@const valeurA = syntheseA?.effetsTotals[effet]}
+                                        {@const valeurB = syntheseB?.effetsTotals[effet]}
+                                        <tr>
+                                                <th scope="row">{effet}</th>
+                                                <td>{formaterIntervalle(valeurA)}</td>
+                                                <td>{formaterIntervalle(valeurB)}</td>
+                                                <td>{differenceIntervalle(valeurA, valeurB)}</td>
+                                        </tr>
+                                {/each}
+                        </tbody>
+                </table>
+        </section>
+{:else}
+        <p class="message-vide">
+                Sélectionnez au moins une panoplie pour afficher le comparatif. Les données s&rsquo;appuient sur vos
+                associations et prix saisis dans la page « Panoplies ».
+        </p>
+{/if}
 
 <style>
         .entete {
                 display: flex;
-                align-items: center;
                 justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
                 gap: 1rem;
                 margin-bottom: 1.5rem;
         }
 
         .bouton-permuter {
+                background: #1f3c88;
+                color: white;
                 border: none;
-                border-radius: 0.75rem;
-                padding: 0.6rem 1.1rem;
+                border-radius: 0.65rem;
+                padding: 0.6rem 1rem;
                 font-weight: 600;
                 cursor: pointer;
-                background: rgba(148, 163, 184, 0.2);
+                transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .bouton-permuter:hover,
+        .bouton-permuter:focus-visible {
+                transform: translateY(-2px);
+                box-shadow: 0 8px 16px rgba(31, 60, 136, 0.2);
+                outline: none;
         }
 
         .selection {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                gap: 1rem;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 1.5rem;
                 margin-bottom: 2rem;
+        }
+
+        .bloc-selection {
                 background: white;
                 padding: 1.5rem;
                 border-radius: 0.75rem;
                 box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
-        }
-
-        .bloc-selection h3 {
-                margin-top: 0;
+                display: grid;
+                gap: 0.75rem;
         }
 
         select {
-                width: 100%;
                 padding: 0.65rem;
                 border-radius: 0.5rem;
                 border: 1px solid #cdd6f6;
@@ -241,56 +246,58 @@
 
         .resume-comparaison {
                 display: grid;
-                gap: 1rem;
-                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1.5rem;
                 margin-bottom: 2rem;
         }
 
         .resume-comparaison > div {
                 background: white;
+                padding: 1.5rem;
                 border-radius: 0.75rem;
                 box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
-                padding: 1.25rem;
         }
 
-        .titre-set {
+        .titre-panoplie {
                 font-weight: 700;
         }
 
-        .tableau-effets table {
-                width: 100%;
-                border-collapse: collapse;
+        .resume-comparaison ul {
+                padding-left: 1rem;
+        }
+
+        .tableau {
                 background: white;
+                padding: 1.5rem;
                 border-radius: 0.75rem;
-                overflow: hidden;
                 box-shadow: 0 6px 16px rgba(31, 60, 136, 0.08);
         }
 
-        .tableau-effets caption {
-                text-align: left;
-                font-weight: 600;
-                padding: 1rem;
+        table {
+                width: 100%;
+                border-collapse: collapse;
+        }
+
+        thead {
+                background: #1f3c88;
+                color: white;
         }
 
         th,
         td {
-                padding: 0.75rem 1rem;
-                border-bottom: 1px solid #e2e8f0;
+                padding: 0.75rem;
+                border-bottom: 1px solid #e5e7eb;
                 text-align: left;
         }
 
-        tbody tr:nth-child(odd) {
-                background: #f8fafc;
+        tbody tr:nth-child(even) {
+                background: #f8faff;
         }
 
-        @media (max-width: 720px) {
-                .entete {
-                        flex-direction: column;
-                        align-items: flex-start;
-                }
-
-                .resume-comparaison {
-                        grid-template-columns: 1fr;
-                }
+        .message-vide {
+                background: #fff7ed;
+                border-left: 4px solid #f97316;
+                padding: 1rem;
+                border-radius: 0.5rem;
         }
 </style>

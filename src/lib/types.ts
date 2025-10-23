@@ -36,63 +36,30 @@ export interface IntervalleEffet {
         max: number;
 }
 
-export type SlotEquipement =
-        | 'coiffe'
-        | 'cape'
-        | 'collier'
-        | 'anneau1'
-        | 'anneau2'
-        | 'ceinture'
-        | 'bottes'
-        | 'bouclier'
-        | 'arme'
-        | 'familier'
-        | 'dofus1'
-        | 'dofus2'
-        | 'dofus3'
-        | 'dofus4'
-        | 'dofus5'
-        | 'dofus6';
-
-export interface DefinitionSlot {
-        id: SlotEquipement;
-        libelle: string;
-        description: string;
+export interface EtatEquipementUtilisateur {
+        prix: number | null;
+        panoplie: string | null;
 }
 
-export interface SelectionSlot {
-        slot: SlotEquipement;
-        equipementNom: string | null;
+export interface EtatPanopliesUtilisateur {
+        equipements: Record<string, EtatEquipementUtilisateur>;
+        comparaison: [string | null, string | null];
+}
+
+export interface DetailPrixEquipement {
+        nom: string;
         prix: number | null;
 }
 
-export interface SetUtilisateur {
-        id: string;
-        nom: string;
-        description?: string;
-        slots: Record<SlotEquipement, SelectionSlot>;
-        creeLe: string;
-}
-
-export interface EtatSetsUtilisateur {
-        setEnCours: Record<SlotEquipement, SelectionSlot>;
-        sets: SetUtilisateur[];
-        comparaison: [string | null, string | null];
-        setActifId: string | null;
-}
-
-export interface DetailSlotSet {
-        slot: DefinitionSlot;
-        selection: SelectionSlot;
-        equipement: Equipement | null;
-}
-
-export interface SyntheseSet {
-        set: SetUtilisateur;
-        details: DetailSlotSet[];
+export interface SynthesePanoplie {
+        panoplie: Panoplie;
+        equipements: Equipement[];
+        effetsEquipements: Record<string, IntervalleEffet>;
+        effetsBonus: Record<string, IntervalleEffet>;
         effetsTotals: Record<string, IntervalleEffet>;
         niveauMinimal: number;
+        nombrePiecesActives: number;
         prixTotal: number;
-        prixManquants: SlotEquipement[];
-        slotsActifs: number;
+        prixManquants: string[];
+        prixDetails: DetailPrixEquipement[];
 }

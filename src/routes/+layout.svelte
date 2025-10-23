@@ -6,7 +6,7 @@
         const navigation = [
                 { libelle: 'Accueil', url: '/' },
                 { libelle: 'Équipements', url: '/equipements' },
-                { libelle: 'Sets', url: '/panoplies' },
+                { libelle: 'Panoplies', url: '/panoplies' },
                 { libelle: 'Comparaison', url: '/comparaison' }
         ];
 </script>
