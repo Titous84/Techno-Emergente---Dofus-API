@@ -6,9 +6,7 @@ import type { RegistrePrix } from '$lib/stores/prix';
  * Retrouve les informations d'un équipement à partir de son nom exact.
  */
 export function trouverEquipement(nom: string): Equipement | undefined {
-        return equipements.find(
-                (equipement) => typeof equipement.nom === 'string' && equipement.nom === nom
-        );
+        return equipements.find((equipement) => equipement.nom === nom);
 }
 
 /**

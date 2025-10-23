@@ -3,34 +3,15 @@
         import { prixEquipements } from '$lib/stores/prix';
         import type { Equipement } from '$lib/types';
 
-        function libelleType(brut: string | undefined) {
-                const valeur = brut?.trim();
-                return valeur && valeur.length > 0 ? valeur : 'Type inconnu';
-        }
-
-        const equipementsAvecNom = equipements.filter(
-                (equipement) => typeof equipement.nom === 'string' && equipement.nom.trim().length > 0
-        );
-
-        const typesDisponibles = [
-                'Tous',
-                ...new Set(equipementsAvecNom.map((equipement) => libelleType(equipement.Type)))
-        ];
+        const typesDisponibles = ['Tous', ...new Set(equipements.map((equipement) => equipement.Type))];
 
         let recherche = '';
         let typeSelectionne = 'Tous';
 
-        function normaliserTexte(texte: unknown) {
-                return String(texte ?? '').toLowerCase();
-        }
-
-        $: equipementsFiltres = equipementsAvecNom.filter((equipement) => {
-                const typeNormalise = libelleType(equipement.Type);
+        $: equipementsFiltres = equipements.filter((equipement) => {
                 const correspondAuType =
-                        typeSelectionne === 'Tous' || typeNormalise === libelleType(typeSelectionne);
-                const correspondRecherche = normaliserTexte(equipement.nom).includes(
-                        normaliserTexte(recherche)
-                );
+                        typeSelectionne === 'Tous' || equipement.Type.toLowerCase() === typeSelectionne.toLowerCase();
+                const correspondRecherche = equipement.nom.toLowerCase().includes(recherche.toLowerCase());
                 return correspondAuType && correspondRecherche;
         });
 
@@ -84,7 +65,7 @@
                                                                 {equipement.nom}
                                                         </a>
                                                 </h3>
-                                                <p>Type : {libelleType(equipement.Type)} · Niveau {equipement.niveau}</p>
+                                                <p>Type : {equipement.Type} · Niveau {equipement.niveau}</p>
                                         </div>
                                 </header>
                                 {#if equipement.effets}
