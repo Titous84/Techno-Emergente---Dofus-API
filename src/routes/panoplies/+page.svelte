@@ -12,12 +12,12 @@
         } from '$lib/types';
 
         // Champs contrôlés par les formulaires de la page.
-        let nomNouvellePanoplie = '';
         let rechercheEquipement = '';
         let panoplieSelectionneeId = '';
         let emplacementSelectionne: EmplacementId | '' = '';
         let equipementSelectionne = '';
         let panoplies: PanopliePersonnalisee[] = [];
+        let panopliesAffichees: PanopliePersonnalisee[] = [];
         let registrePrix = {} as Record<string, number>;
         let panoplieSelectionnee: PanopliePersonnalisee | null = null;
         let resumePanoplie: ResumePanoplie | null = null;
@@ -33,7 +33,17 @@
         }
 
         // Synchronisation automatique avec les stores Svelte.
+        function horodatage(panoplie: PanopliePersonnalisee) {
+                const modifie = Date.parse(panoplie.modifieLe ?? '');
+                if (!Number.isNaN(modifie)) {
+                        return modifie;
+                }
+                const cree = Date.parse(panoplie.creeLe ?? '');
+                return Number.isNaN(cree) ? 0 : cree;
+        }
+
         $: panoplies = $panopliesUtilisateur as PanopliePersonnalisee[];
+        $: panopliesAffichees = [...panoplies].sort((a, b) => horodatage(b) - horodatage(a));
         $: registrePrix = $prixEquipements;
         $: panoplieSelectionnee = panoplies.find((p) => p.id === panoplieSelectionneeId) ?? null;
         $: if (!emplacementSelectionne && EMPLACEMENTS_PANOPLIE.length > 0) {
@@ -54,10 +64,9 @@
                 .slice(0, 30);
 
         // Crée une panoplie vide puis la sélectionne.
-        function creerPanoplie() {
-                const id = panopliesUtilisateur.ajouterPanoplie(nomNouvellePanoplie);
+        function creerPanoplieRapide() {
+                const id = panopliesUtilisateur.ajouterPanoplie('Nouvelle panoplie');
                 panoplieSelectionneeId = id;
-                nomNouvellePanoplie = '';
         }
 
         // Demande confirmation avant de supprimer une panoplie.
@@ -125,19 +134,12 @@
 <section class="gestion">
         <div class="liste-panoplies">
                 <h2>Mes panoplies</h2>
-                <form class="creation" on:submit|preventDefault={creerPanoplie}>
-                        <label>
-                                Nom de la nouvelle panoplie
-                                <input type="text" bind:value={nomNouvellePanoplie} placeholder="Ex. : Panoplie PvM Terre" />
-                        </label>
-                        <button type="submit">Créer</button>
-                </form>
 
                 <ul>
-                        {#if panoplies.length === 0}
+                        {#if panopliesAffichees.length === 0}
                                 <li class="vide">Aucune panoplie enregistrée pour le moment.</li>
                         {/if}
-                        {#each panoplies as panoplie}
+                        {#each panopliesAffichees as panoplie}
                                 <li class:active={panoplie.id === panoplieSelectionneeId}>
                                         <button type="button" on:click={() => (panoplieSelectionneeId = panoplie.id)}>
                                                 <strong>{panoplie.nom}</strong>
@@ -157,6 +159,9 @@
         </div>
 
         <div class="details">
+                <button type="button" class="action-creation" on:click={creerPanoplieRapide}>
+                        Créer une nouvelle panoplie
+                </button>
                 {#if !panoplieSelectionnee}
                         <p>Sélectionnez ou créez une panoplie pour afficher les détails.</p>
                 {:else}
@@ -299,31 +304,12 @@
                 gap: 1rem;
         }
 
-        .creation {
-                display: grid;
-                gap: 0.75rem;
-        }
-
-        .creation input {
-                padding: 0.5rem 0.75rem;
-                border-radius: 0.5rem;
-                border: 1px solid #d0d6e1;
-        }
-
-        .creation button {
-                background: #2a4a7b;
-                color: white;
-                border: none;
-                border-radius: 999px;
-                padding: 0.5rem 1.25rem;
-                cursor: pointer;
-        }
-
         .liste-panoplies ul {
                 list-style: none;
                 padding: 0;
                 margin: 0;
-                display: grid;
+                display: flex;
+                flex-direction: column;
                 gap: 0.75rem;
         }
 
@@ -397,6 +383,16 @@
         .controle button:disabled {
                 opacity: 0.6;
                 cursor: not-allowed;
+        }
+
+        .details .action-creation {
+                background: #2a4a7b;
+                color: white;
+                border: none;
+                border-radius: 999px;
+                padding: 0.5rem 1.25rem;
+                cursor: pointer;
+                justify-self: start;
         }
 
         .emplacements {
