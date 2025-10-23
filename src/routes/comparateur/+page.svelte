@@ -60,9 +60,8 @@
                         if (!details) {
                                 continue;
                         }
-                        const niveau = typeof details.niveau === 'number' ? details.niveau : 0;
-                        if (niveau > resume.niveauMinimum) {
-                                resume.niveauMinimum = niveau;
+                        if (details.niveau && details.niveau > resume.niveauMinimum) {
+                                resume.niveauMinimum = details.niveau;
                         }
                         if (details.effets) {
                                 for (const [nomEffet, valeur] of Object.entries(details.effets)) {

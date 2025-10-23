@@ -1,16 +1,11 @@
 <script lang="ts">
-        import { equipementsDisponibles } from '$lib/services/base-de-donnees';
-        import type { EquipementComplet } from '$lib/services/base-de-donnees';
-
-        const equipements: EquipementComplet[] = equipementsDisponibles;
+        import equipements from '$lib/data/equipements.json';
 
         // Zone de recherche simple sur le nom de l'équipement.
         let recherche = '';
 
-        $: termeRecherche = recherche.trim().toLowerCase();
-
         $: listeFiltree = equipements.filter((equipement) =>
-                equipement.nom.toLowerCase().includes(termeRecherche)
+                equipement.nom.toLowerCase().includes(recherche.toLowerCase())
         );
 </script>
 
