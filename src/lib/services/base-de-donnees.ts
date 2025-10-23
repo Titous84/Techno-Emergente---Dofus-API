@@ -2,6 +2,21 @@ import equipements from '$lib/data/equipements.json';
 import panoplies from '$lib/data/panoplie.json';
 import ressources from '$lib/data/ressources.json';
 
+export interface EquipementComplet {
+        nom: string;
+        niveau?: number;
+        Type?: string;
+        description?: string;
+        illustration_url?: string;
+        effets?: Record<string, number | number[]>;
+        recette?: Record<string, number>;
+        [cle: string]: unknown;
+}
+
+export const equipementsDisponibles: EquipementComplet[] = (equipements as EquipementComplet[]).filter(
+        (equipement) => typeof equipement?.nom === 'string' && equipement.nom.trim().length > 0
+);
+
 function normaliserTexte(texte: string): string {
 	return texte
 		.normalize('NFD')
@@ -9,16 +24,16 @@ function normaliserTexte(texte: string): string {
 		.toLowerCase();
 }
 
-export function getEquipementParNom(nom: string) {
-	const resultat = equipements.find((e) => e.nom === nom);
-	if (!resultat) {
-		console.warn('❌ Équipement non trouvé :', nom);
-		console.log(
-			'Voici quelques noms disponibles :',
-			equipements.slice(0, 5).map((e) => e.nom)
-		);
-	}
-	return resultat;
+export function getEquipementParNom(nom: string): EquipementComplet | undefined {
+        const resultat = equipementsDisponibles.find((e) => e.nom === nom);
+        if (!resultat) {
+                console.warn('❌ Équipement non trouvé :', nom);
+                console.log(
+                        'Voici quelques noms disponibles :',
+                        equipementsDisponibles.slice(0, 5).map((e) => e.nom)
+                );
+        }
+        return resultat;
 }
 
 export function getPanoplieParEquipement(equipementNom: string) {
@@ -31,14 +46,14 @@ export function trouverRessource(nom: string) {
 }
 
 export function listerTousLesEffets() {
-	const setEffets = new Set<string>();
+        const setEffets = new Set<string>();
 
-	for (const eq of equipements) {
-		if (eq.effets) {
-			for (const effet of Object.keys(eq.effets)) {
-				setEffets.add(effet);
-			}
-		}
+        for (const eq of equipementsDisponibles) {
+                if (eq.effets) {
+                        for (const effet of Object.keys(eq.effets)) {
+                                setEffets.add(effet);
+                        }
+                }
 	}
 
 	return Array.from(setEffets).sort();
