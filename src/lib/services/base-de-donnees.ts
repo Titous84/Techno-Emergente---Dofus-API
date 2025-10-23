@@ -7,11 +7,15 @@ import type { Equipement, PanoplieOfficielle } from '$lib/types';
 const equipementsDonnees = equipements as unknown as Equipement[];
 const panopliesDonnees = panoplies as unknown as PanoplieOfficielle[];
 
-function normaliserTexte(texte: string): string {
-	return texte
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.toLowerCase();
+// Conversion explicite pour bénéficier de l'autocomplétion TypeScript.
+const equipementsDonnees = equipements as unknown as Equipement[];
+const panopliesDonnees = panoplies as unknown as PanoplieOfficielle[];
+
+function normaliserTexte(texte: unknown): string {
+        return String(texte ?? '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
 }
 
 export function getEquipementParNom(nom: string): Equipement | undefined {
