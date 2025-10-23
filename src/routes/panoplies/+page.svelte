@@ -16,11 +16,6 @@
         let resumePanoplie: ResumePanoplie | null = null;
         let equipementsFiltres: Equipement[] = [];
 
-        function libelleType(brut: string | undefined) {
-                const valeur = brut?.trim();
-                return valeur && valeur.length > 0 ? valeur : 'Type inconnu';
-        }
-
         // Synchronisation automatique avec les stores Svelte.
         $: panoplies = $panopliesUtilisateur as PanopliePersonnalisee[];
         $: registrePrix = $prixEquipements;
@@ -29,13 +24,9 @@
                 ? calculerResumePanoplie(panoplieSelectionnee, registrePrix)
                 : null;
 
-        function normaliserTexte(texte: string | undefined) {
-                return texte?.toLowerCase() ?? '';
-        }
-
         $: equipementsFiltres = equipements
                 .filter((equipement) =>
-                        normaliserTexte(equipement.nom).includes(normaliserTexte(rechercheEquipement.trim()))
+                        equipement.nom.toLowerCase().includes(rechercheEquipement.trim().toLowerCase())
                 )
                 .slice(0, 30);
 
@@ -192,7 +183,7 @@
                                                                 <div>
                                                                         <strong>{nom}</strong>
                                                                         {#if equipement}
-                                        <span>Niveau {equipement.niveau} · {libelleType(equipement?.Type)}</span>
+                                                                                <span>Niveau {equipement.niveau} · {equipement.Type}</span>
                                                                         {/if}
                                                                 </div>
                                                                 <div class="boutons">

@@ -3,30 +3,15 @@
         import { prixEquipements } from '$lib/stores/prix';
         import type { Equipement } from '$lib/types';
 
-        function libelleType(brut: string | undefined) {
-                const valeur = brut?.trim();
-                return valeur && valeur.length > 0 ? valeur : 'Type inconnu';
-        }
-
-        function normaliserTexte(texte: string | undefined) {
-                return texte?.toLowerCase() ?? '';
-        }
-
-        const typesDisponibles = [
-                'Tous',
-                ...new Set(equipements.map((equipement) => libelleType(equipement.Type)))
-        ];
+        const typesDisponibles = ['Tous', ...new Set(equipements.map((equipement) => equipement.Type))];
 
         let recherche = '';
         let typeSelectionne = 'Tous';
 
         $: equipementsFiltres = equipements.filter((equipement) => {
-                const typeNormalise = libelleType(equipement.Type);
                 const correspondAuType =
-                        typeSelectionne === 'Tous' || typeNormalise === libelleType(typeSelectionne);
-                const correspondRecherche = normaliserTexte(equipement.nom).includes(
-                        normaliserTexte(recherche)
-                );
+                        typeSelectionne === 'Tous' || equipement.Type.toLowerCase() === typeSelectionne.toLowerCase();
+                const correspondRecherche = equipement.nom.toLowerCase().includes(recherche.toLowerCase());
                 return correspondAuType && correspondRecherche;
         });
 
@@ -80,7 +65,7 @@
                                                                 {equipement.nom}
                                                         </a>
                                                 </h3>
-                                                <p>Type : {libelleType(equipement.Type)} · Niveau {equipement.niveau}</p>
+                                                <p>Type : {equipement.Type} · Niveau {equipement.niveau}</p>
                                         </div>
                                 </header>
                                 {#if equipement.effets}
