@@ -7,19 +7,17 @@ import type { Equipement, PanoplieOfficielle } from '$lib/types';
 const equipementsDonnees = equipements as unknown as Equipement[];
 const panopliesDonnees = panoplies as unknown as PanoplieOfficielle[];
 
-// Conversion explicite pour bénéficier de l'autocomplétion TypeScript.
-const equipementsDonnees = equipements as unknown as Equipement[];
-const panopliesDonnees = panoplies as unknown as PanoplieOfficielle[];
-
 function normaliserTexte(texte: unknown): string {
-        return String(texte ?? '')
+        return `${texte ?? ''}`
                 .normalize('NFD')
                 .replace(/[\u0300-\u036f]/g, '')
                 .toLowerCase();
 }
 
 export function getEquipementParNom(nom: string): Equipement | undefined {
-        const resultat = equipementsDonnees.find((e) => e.nom === nom);
+        const resultat = equipementsDonnees.find(
+                (e) => typeof e.nom === 'string' && e.nom.trim().length > 0 && e.nom === nom
+        );
         if (!resultat) {
                 console.warn('❌ Équipement non trouvé :', nom);
                 console.log(
