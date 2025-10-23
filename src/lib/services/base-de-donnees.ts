@@ -15,9 +15,7 @@ function normaliserTexte(texte: string): string {
 }
 
 export function getEquipementParNom(nom: string): Equipement | undefined {
-        const resultat = equipementsDonnees.find(
-                (e) => typeof e.nom === 'string' && e.nom.trim().length > 0 && e.nom === nom
-        );
+        const resultat = equipementsDonnees.find((e) => e.nom === nom);
         if (!resultat) {
                 console.warn('❌ Équipement non trouvé :', nom);
                 console.log(
