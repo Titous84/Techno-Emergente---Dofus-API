@@ -59,7 +59,7 @@
 			'% Résistance Air': 'resAir',
 			'Résistance(s) Critiques': 'resCrit',
 			'Invocation(s)': 'invocation',
-			'% Résistance Poussée': 'resPoussee'
+			'Résistance(s) Poussée': 'resPoussee'
 		};
 
 		const filename = mapping[effet] || effet.toLowerCase().replace(/\s|\(|\)|%/g, '');
