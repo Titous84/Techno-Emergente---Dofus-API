@@ -21,9 +21,54 @@
         let recherche = '';
         let typeSelectionne = 'Tous';
 
+        const bornesNiveau = equipementsAvecNom.reduce(
+                (acc, equipement) => {
+                        return {
+                                min: Math.min(acc.min, equipement.niveau),
+                                max: Math.max(acc.max, equipement.niveau)
+                        };
+                },
+                { min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY }
+        );
+
+        const niveauAbsoluMin = Number.isFinite(bornesNiveau.min) ? bornesNiveau.min : 1;
+        const niveauAbsoluMax = Number.isFinite(bornesNiveau.max) ? bornesNiveau.max : 200;
+
+        let niveauMin: number = niveauAbsoluMin;
+        let niveauMax: number = niveauAbsoluMax;
+        let filtresEffetsTexte = '';
+        let filtresEffets: string[] = [];
+
+        function normaliserBorne(valeur: number, min: number, max: number) {
+                if (Number.isNaN(valeur)) {
+                        return min;
+                }
+                return Math.min(Math.max(valeur, min), max);
+        }
+
         function normaliserTexte(texte: unknown) {
                 return `${texte ?? ''}`.toLowerCase();
         }
+
+        function effetsCorrespondent(equipement: Equipement, filtres: string[]) {
+                if (filtres.length === 0) {
+                        return true;
+                }
+                const effets = equipement.effets ? Object.keys(equipement.effets) : [];
+                if (effets.length === 0) {
+                        return false;
+                }
+                const effetsNormalises = effets.map((effet) => normaliserTexte(effet));
+                return filtres.every((mot) => effetsNormalises.some((effet) => effet.includes(mot)));
+        }
+
+        $: niveauMin = normaliserBorne(niveauMin, niveauAbsoluMin, niveauAbsoluMax);
+        $: niveauMax = normaliserBorne(niveauMax, niveauMin, niveauAbsoluMax);
+
+        $: filtresEffets = filtresEffetsTexte
+                .split(',')
+                .map((mot) => normaliserTexte(mot).trim())
+                .filter((mot) => mot.length > 0);
 
         $: equipementsFiltres = equipementsAvecNom.filter((equipement) => {
                 const typeNormalise = libelleType(equipement.Type);
@@ -32,7 +77,10 @@
                 const correspondRecherche = normaliserTexte(equipement.nom).includes(
                         normaliserTexte(recherche)
                 );
-                return correspondAuType && correspondRecherche;
+                const correspondNiveau =
+                        equipement.niveau >= niveauMin && equipement.niveau <= niveauMax;
+                const correspondEffets = effetsCorrespondent(equipement, filtresEffets);
+                return correspondAuType && correspondRecherche && correspondNiveau && correspondEffets;
         });
 
         /**
@@ -58,12 +106,28 @@
                 <input type="search" placeholder="Ex. : Cape du Sinistrofu" bind:value={recherche} />
         </label>
         <label>
-                Filtrer par type
+                Type d'équipement
                 <select bind:value={typeSelectionne}>
                         {#each typesDisponibles as type}
                                 <option value={type}>{type}</option>
                         {/each}
                 </select>
+        </label>
+        <label>
+                Niveau minimum
+                <input type="number" min={niveauAbsoluMin} max={niveauAbsoluMax} bind:value={niveauMin} />
+        </label>
+        <label>
+                Niveau maximum
+                <input type="number" min={niveauAbsoluMin} max={niveauAbsoluMax} bind:value={niveauMax} />
+        </label>
+        <label class="effets">
+                Effets à inclure (séparés par des virgules)
+                <input
+                        type="text"
+                        placeholder="Ex. : Force, Résistance Eau"
+                        bind:value={filtresEffetsTexte}
+                />
         </label>
         <button type="button" on:click={() => prixEquipements.reinitialiser()}>
                 Réinitialiser les prix

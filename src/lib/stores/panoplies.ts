@@ -49,14 +49,12 @@ function normaliserPanoplie(entree: unknown): PanopliePersonnalisee | null {
                 ? source.nom.trim()
                 : 'Panoplie sans nom';
 
-        const description = typeof source.description === 'string' ? source.description : undefined;
         const creeLe = typeof source.creeLe === 'string' ? source.creeLe : new Date().toISOString();
         const modifieLe = typeof source.modifieLe === 'string' ? source.modifieLe : creeLe;
 
         return {
                 id: typeof source.id === 'string' ? source.id : genererId(),
                 nom,
-                description,
                 emplacements,
                 creeLe,
                 modifieLe
@@ -100,7 +98,6 @@ function creerPanoplie(nom: string): PanopliePersonnalisee {
         return {
                 id: genererId(),
                 nom,
-                description: '',
                 emplacements: emplacementsVides(),
                 creeLe: maintenant,
                 modifieLe: maintenant
@@ -136,19 +133,6 @@ function creerStorePanoplies() {
                                                 ? {
                                                           ...p,
                                                           nom: nomNettoye,
-                                                          modifieLe: new Date().toISOString()
-                                                  }
-                                                : p
-                                )
-                        );
-                },
-                definirDescription(id: string, description: string) {
-                        update((liste) =>
-                                liste.map((p) =>
-                                        p.id === id
-                                                ? {
-                                                          ...p,
-                                                          description,
                                                           modifieLe: new Date().toISOString()
                                                   }
                                                 : p

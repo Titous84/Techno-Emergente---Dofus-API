@@ -32,6 +32,22 @@
                 return valeur && valeur.length > 0 ? valeur : 'Type inconnu';
         }
 
+        function obtenirDefinitionEmplacement(id: EmplacementId | '') {
+                if (!id) return null;
+                return EMPLACEMENTS_PANOPLIE.find((emplacement) => emplacement.id === id) ?? null;
+        }
+
+        function estCompatibleAvecEmplacement(equipement: Equipement, emplacementId: EmplacementId | '') {
+                const definition = obtenirDefinitionEmplacement(emplacementId);
+                if (!definition || !definition.typesCompatibles || definition.typesCompatibles.length === 0) {
+                        return true;
+                }
+                const typeEquipement = libelleType(equipement.Type);
+                return definition.typesCompatibles.some(
+                        (typeAutorise) => libelleType(typeAutorise) === typeEquipement
+                );
+        }
+
         // Synchronisation automatique avec les stores Svelte.
         function horodatage(panoplie: PanopliePersonnalisee) {
                 const modifie = Date.parse(panoplie.modifieLe ?? '');
@@ -61,7 +77,15 @@
                 .filter((equipement) =>
                         normaliserTexte(equipement.nom).includes(normaliserTexte(rechercheEquipement.trim()))
                 )
+                .filter((equipement) => estCompatibleAvecEmplacement(equipement, emplacementSelectionne))
                 .slice(0, 30);
+
+        $: if (equipementSelectionne && emplacementSelectionne) {
+                const equipement = equipementsAvecNom.find((item) => item.nom === equipementSelectionne);
+                if (!equipement || !estCompatibleAvecEmplacement(equipement, emplacementSelectionne)) {
+                        equipementSelectionne = '';
+                }
+        }
 
         // Crée une panoplie vide puis la sélectionne.
         function creerPanoplieRapide() {
@@ -117,13 +141,6 @@
                 panopliesUtilisateur.renommerPanoplie(panoplieSelectionneeId, cible.value);
         }
 
-        // Enregistre une description libre de l'objectif de la panoplie.
-        function definirDescription(event: Event) {
-                if (!panoplieSelectionneeId) return;
-                const cible = event.currentTarget as HTMLTextAreaElement;
-                panopliesUtilisateur.definirDescription(panoplieSelectionneeId, cible.value);
-        }
-
         // Texte court pour afficher les statistiques clés dans la liste.
         function resumeCourt(panoplie: PanopliePersonnalisee) {
                 const resume = calculerResumePanoplie(panoplie, registrePrix);
@@ -171,15 +188,6 @@
                                         Nom
                                         <input type="text" value={panoplieSelectionnee.nom} on:input={renommerPanoplie} />
                                 </label>
-                                <label>
-                                        Description
-                                        <textarea
-                                                rows="3"
-                                                placeholder="Objectifs, rôle en combat, sources d'inspiration..."
-                                                value={panoplieSelectionnee.description ?? ''}
-                                                on:input={definirDescription}
-                                        ></textarea>
-                                </label>
                         </div>
 
                         <section class="ajout">
@@ -199,6 +207,11 @@
                                         </select>
                                         <select bind:value={equipementSelectionne}>
                                                 <option value="">Sélectionner</option>
+                                                {#if equipementsFiltres.length === 0}
+                                                        <option value="" disabled>
+                                                                Aucun équipement compatible pour cet emplacement
+                                                        </option>
+                                                {/if}
                                                 {#each equipementsFiltres as equipement}
                                                         <option value={equipement.nom}>{equipement.nom} (niv. {equipement.niveau})</option>
                                                 {/each}
@@ -356,7 +369,6 @@
         }
 
         .details input,
-        .details textarea,
         .controle input,
         .controle select {
                 width: 100%;

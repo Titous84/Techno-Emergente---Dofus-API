@@ -60,6 +60,8 @@ export interface EmplacementDefinition {
         nom: string;
         /** Catégorie pour regrouper visuellement les emplacements. */
         categorie: 'équipement' | 'dofus' | 'compagnon';
+        /** Types d'équipements compatibles avec l'emplacement (optionnel pour laisser tous les types). */
+        typesCompatibles?: string[];
 }
 
 export interface PanopliePersonnalisee {
@@ -72,22 +74,57 @@ export interface PanopliePersonnalisee {
 }
 
 export const EMPLACEMENTS_PANOPLIE: EmplacementDefinition[] = [
-        { id: 'chapeau', nom: 'Chapeau', categorie: 'équipement' },
-        { id: 'cape', nom: 'Cape', categorie: 'équipement' },
-        { id: 'collier', nom: 'Collier', categorie: 'équipement' },
-        { id: 'ceinture', nom: 'Ceinture', categorie: 'équipement' },
-        { id: 'anneau_1', nom: 'Anneau 1', categorie: 'équipement' },
-        { id: 'anneau_2', nom: 'Anneau 2', categorie: 'équipement' },
-        { id: 'bottes', nom: 'Bottes', categorie: 'équipement' },
+        { id: 'chapeau', nom: 'Chapeau', categorie: 'équipement', typesCompatibles: ['Chapeau'] },
+        { id: 'cape', nom: 'Cape', categorie: 'équipement', typesCompatibles: ['Cape'] },
+        { id: 'collier', nom: 'Collier', categorie: 'équipement', typesCompatibles: ['Amulette'] },
+        { id: 'ceinture', nom: 'Ceinture', categorie: 'équipement', typesCompatibles: ['Ceinture'] },
+        { id: 'anneau_1', nom: 'Anneau 1', categorie: 'équipement', typesCompatibles: ['Anneau'] },
+        { id: 'anneau_2', nom: 'Anneau 2', categorie: 'équipement', typesCompatibles: ['Anneau'] },
+        { id: 'bottes', nom: 'Bottes', categorie: 'équipement', typesCompatibles: ['Bottes'] },
         { id: 'arme', nom: 'Arme', categorie: 'équipement' },
-        { id: 'bouclier', nom: 'Bouclier', categorie: 'équipement' },
-        { id: 'familier', nom: 'Familier / Monture', categorie: 'compagnon' },
-        { id: 'dofus_1', nom: 'Dofus ou Idole 1', categorie: 'dofus' },
-        { id: 'dofus_2', nom: 'Dofus ou Idole 2', categorie: 'dofus' },
-        { id: 'dofus_3', nom: 'Dofus ou Idole 3', categorie: 'dofus' },
-        { id: 'dofus_4', nom: 'Dofus ou Idole 4', categorie: 'dofus' },
-        { id: 'dofus_5', nom: 'Dofus ou Idole 5', categorie: 'dofus' },
-        { id: 'dofus_6', nom: 'Dofus ou Idole 6', categorie: 'dofus' }
+        { id: 'bouclier', nom: 'Bouclier', categorie: 'équipement', typesCompatibles: ['Bouclier'] },
+        {
+                id: 'familier',
+                nom: 'Familier / Monture',
+                categorie: 'compagnon',
+                typesCompatibles: ['Objet vivant', 'Sac à dos']
+        },
+        {
+                id: 'dofus_1',
+                nom: 'Dofus ou Idole 1',
+                categorie: 'dofus',
+                typesCompatibles: ['Dofus', 'Trophée', 'Badge']
+        },
+        {
+                id: 'dofus_2',
+                nom: 'Dofus ou Idole 2',
+                categorie: 'dofus',
+                typesCompatibles: ['Dofus', 'Trophée', 'Badge']
+        },
+        {
+                id: 'dofus_3',
+                nom: 'Dofus ou Idole 3',
+                categorie: 'dofus',
+                typesCompatibles: ['Dofus', 'Trophée', 'Badge']
+        },
+        {
+                id: 'dofus_4',
+                nom: 'Dofus ou Idole 4',
+                categorie: 'dofus',
+                typesCompatibles: ['Dofus', 'Trophée', 'Badge']
+        },
+        {
+                id: 'dofus_5',
+                nom: 'Dofus ou Idole 5',
+                categorie: 'dofus',
+                typesCompatibles: ['Dofus', 'Trophée', 'Badge']
+        },
+        {
+                id: 'dofus_6',
+                nom: 'Dofus ou Idole 6',
+                categorie: 'dofus',
+                typesCompatibles: ['Dofus', 'Trophée', 'Badge']
+        }
 ];
 
 export function emplacementsVides(): EmplacementsPanoplie {
