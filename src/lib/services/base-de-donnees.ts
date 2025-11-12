@@ -1,29 +1,36 @@
 import equipements from '$lib/data/equipements.json';
 import panoplies from '$lib/data/panoplie.json';
 import ressources from '$lib/data/ressources.json';
+import type { Equipement, PanoplieOfficielle } from '$lib/types';
 
-function normaliserTexte(texte: string): string {
-	return texte
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.toLowerCase();
+// Conversion explicite pour bénéficier de l'autocomplétion TypeScript.
+const equipementsDonnees = equipements as unknown as Equipement[];
+const panopliesDonnees = panoplies as unknown as PanoplieOfficielle[];
+
+function normaliserTexte(texte: unknown): string {
+        return `${texte ?? ''}`
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
 }
 
-export function getEquipementParNom(nom: string) {
-	const resultat = equipements.find((e) => e.nom === nom);
-	if (!resultat) {
-		console.warn('❌ Équipement non trouvé :', nom);
-		console.log(
-			'Voici quelques noms disponibles :',
-			equipements.slice(0, 5).map((e) => e.nom)
-		);
-	}
-	return resultat;
+export function getEquipementParNom(nom: string): Equipement | undefined {
+        const resultat = equipementsDonnees.find(
+                (e) => typeof e.nom === 'string' && e.nom.trim().length > 0 && e.nom === nom
+        );
+        if (!resultat) {
+                console.warn('❌ Équipement non trouvé :', nom);
+                console.log(
+                        'Voici quelques noms disponibles :',
+                        equipementsDonnees.slice(0, 5).map((e) => e.nom)
+                );
+        }
+        return resultat;
 }
 
-export function getPanoplieParEquipement(equipementNom: string) {
-	const nomNormalise = normaliserTexte(equipementNom);
-	return panoplies.find((p) => p.composition.some((nom) => normaliserTexte(nom) === nomNormalise));
+export function getPanoplieParEquipement(equipementNom: string): PanoplieOfficielle | undefined {
+        const nomNormalise = normaliserTexte(equipementNom);
+        return panopliesDonnees.find((p) => p.composition.some((nom) => normaliserTexte(nom) === nomNormalise));
 }
 
 export function trouverRessource(nom: string) {
